@@ -5,42 +5,32 @@ using UnityEngine;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.0.2")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.0.3")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
-        public static string DebugMonitorText = "Инициализация фикса...";
+        public static string DebugMonitorText = "Инициализация...";
         public static int TotalFramesCount = 0;
-        public static int LateUpdateCalls = 0;
+        public static int FixExecutionCalls = 0;
         public static string LastFoundCharacter = "Никого";
-
-        // --- НОВЫЕ ПЕРЕМЕННЫЕ ДЛЯ ТЕЛЕМЕТРИИ РАДАРА ---
-        public static string LeftLegTelemetry = "L: Нет данных";
-        public static string RightLegTelemetry = "R: Нет данных";
+        public static string LeftLegTelemetry = "L: Ожидание";
+        public static string RightLegTelemetry = "R: Ожидание";
 
         private void Awake()
         {
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
 
+            // Хук строго на DoUpdate мода MegaMorph
             Type megaMorphType = AccessTools.TypeByName("MegaMorph.MegaMorph");
             if (megaMorphType != null)
             {
                 var original = AccessTools.Method(megaMorphType, "DoUpdate");
                 var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
                 harmony.Patch(original, null, new HarmonyMethod(postfix));
-                DebugMonitorText = "Хук MegaMorph.DoUpdate успешно установлен!";
+                DebugMonitorText = "Фикс синхронизирован с циклом MegaMorph!";
             }
             else
             {
-                DebugMonitorText = "ВНИМАНИЕ: Класс MegaMorph не найден по строковому имени!";
-            }
-
-            try
-            {
-                harmony.PatchAll();
-            }
-            catch (Exception ex)
-            {
-                DebugMonitorText = $"Ошибка инициализации Harmony: {ex.Message}";
+                DebugMonitorText = "КРИТИЧЕСКАЯ ОШИБКА: Мод MegaMorph НЕ НАЙДЕН в игре!";
             }
         }
 
@@ -51,20 +41,18 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            // Увеличиваем окно радара по высоте (220 пикселей), чтобы влезла вся телеметрия суставов
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix SYSTEM REALTIME DIAGNOSTIC");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (v0.0.3)");
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
                 fontSize = 12,
                 fontStyle = UnityEngine.FontStyle.Bold,
                 alignment = UnityEngine.TextAnchor.UpperLeft
             };
-            labelStyle.normal.textColor = UnityEngine.Color.green; // Зеленый "хакерский" цвет для лучшей читаемости
+            labelStyle.normal.textColor = UnityEngine.Color.green;
 
             string systemStatus =
-                $"[СИСТЕМА] Кадры плагина: {TotalFramesCount} | Вызовы LateUpdate: {LateUpdateCalls}\n" +
-                $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter}\n" +
-                $"[СТАТУС] {DebugMonitorText}\n" +
+                $"[СИСТЕМА] Кадры плагина: {TotalFramesCount} | Коррекции суставов: {FixExecutionCalls}\n" +
+                $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter} | Статус: {DebugMonitorText}\n" +
                 $"--------------------------------------------------------------------------------\n" +
                 $"{LeftLegTelemetry}\n" +
                 $"--------------------------------------------------------------------------------\n" +
@@ -79,19 +67,13 @@ namespace MMorphFix
         public static void Postfix(MonoBehaviour __instance)
         {
             if (__instance == null) return;
+            // Вытаскиваем CharacterCustomization из компонента MegaMorph
             CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
-            if (cc != null) LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ");
-        }
-    }
-
-    [HarmonyPatch(typeof(CharacterCustomization), "LateUpdate")]
-    public static class GameLateUpdatePatch
-    {
-        [HarmonyPostfix]
-        public static void Postfix(CharacterCustomization __instance)
-        {
-            MMorphFixPlugin.LateUpdateCalls++;
-            LegEqualizerCore.ExecuteFix(__instance, "LATEUPDATE");
+            if (cc != null)
+            {
+                MMorphFixPlugin.FixExecutionCalls++;
+                LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ_POSTFIX");
+            }
         }
     }
 }
