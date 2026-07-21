@@ -19,18 +19,25 @@ namespace MMorphFix
         {
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
 
-            // ИСПРАВЛЕНО: Указываем точное имя пространства имен и класса из оригинальной DLL
-            Type megaMorphType = AccessTools.TypeByName("BepInExPlugin.MegaMorph");
+            // ИСПРАВЛЕНО НА ОСНОВЕ ЛОГА: Используем плюс '+' для вложенного класса MegaMorph
+            Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph");
+
+            // Если вдруг автор вынес его на один уровень с BepInExPlugin, проверяем второй вариант
+            if (megaMorphType == null)
+            {
+                megaMorphType = AccessTools.TypeByName("MegaMorph.MegaMorph");
+            }
+
             if (megaMorphType != null)
             {
                 var original = AccessTools.Method(megaMorphType, "DoUpdate");
                 var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
                 harmony.Patch(original, null, new HarmonyMethod(postfix));
-                DebugMonitorText = "Фикс успешно синхронизирован с циклом MegaMorph!";
+                DebugMonitorText = "Фикс УСПЕШНО синхронизирован с циклом MegaMorph!";
             }
             else
             {
-                DebugMonitorText = "КРИТИЧЕСКАЯ ОШИБКА: Класс BepInExPlugin.MegaMorph НЕ НАЙДЕН в памяти игры!";
+                DebugMonitorText = "КРИТИЧЕСКАЯ ОШИБКА: Компонент MegaMorph не обнаружен в метаданных!";
             }
         }
 
@@ -68,7 +75,7 @@ namespace MMorphFix
         {
             if (__instance == null) return;
 
-            // Вытаскиваем CharacterCustomization из компонента MegaMorph
+            // Динамически вытягиваем поле 'cc' из чужого компонента, независимо от его точного типа
             CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
             if (cc != null)
             {
