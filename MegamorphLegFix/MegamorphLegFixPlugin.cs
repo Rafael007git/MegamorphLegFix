@@ -19,18 +19,18 @@ namespace MMorphFix
         {
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
 
-            // Хук строго на DoUpdate мода MegaMorph
-            Type megaMorphType = AccessTools.TypeByName("MegaMorph.MegaMorph");
+            // ИСПРАВЛЕНО: Указываем точное имя пространства имен и класса из оригинальной DLL
+            Type megaMorphType = AccessTools.TypeByName("BepInExPlugin.MegaMorph");
             if (megaMorphType != null)
             {
                 var original = AccessTools.Method(megaMorphType, "DoUpdate");
                 var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
                 harmony.Patch(original, null, new HarmonyMethod(postfix));
-                DebugMonitorText = "Фикс синхронизирован с циклом MegaMorph!";
+                DebugMonitorText = "Фикс успешно синхронизирован с циклом MegaMorph!";
             }
             else
             {
-                DebugMonitorText = "КРИТИЧЕСКАЯ ОШИБКА: Мод MegaMorph НЕ НАЙДЕН в игре!";
+                DebugMonitorText = "КРИТИЧЕСКАЯ ОШИБКА: Класс BepInExPlugin.MegaMorph НЕ НАЙДЕН в памяти игры!";
             }
         }
 
@@ -67,6 +67,7 @@ namespace MMorphFix
         public static void Postfix(MonoBehaviour __instance)
         {
             if (__instance == null) return;
+
             // Вытаскиваем CharacterCustomization из компонента MegaMorph
             CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
             if (cc != null)
