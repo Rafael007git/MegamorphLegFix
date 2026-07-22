@@ -23,7 +23,6 @@ namespace MMorphFix
             {
                 MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
 
-                // Извлекаем компонент Мегаморфа
                 Component megaMorphComp = cc.gameObject.GetComponent("MegaMorph");
 
                 bool leftOk = false;
@@ -48,7 +47,7 @@ namespace MMorphFix
                 if (leftOk || rightOk)
                 {
                     MMorphFixPlugin.FixExecutionCalls++;
-                    MMorphFixPlugin.DebugMonitorText = "Инверсия осей слайдеров активна.";
+                    MMorphFixPlugin.DebugMonitorText = "Каскадный щит суставов активен.";
                 }
             }
             catch (Exception ex)
@@ -70,37 +69,49 @@ namespace MMorphFix
             Transform twist = FindChildRecursive(thighBone, twistName);
             if (twist != null) twist.localScale = Vector3.one;
 
-            // ДЕФОЛТНЫЕ ЗНАЧЕНИЯ НА СЛУЧАЙ ОТКЛЮЧЕНИЯ МЕГАМОРФА ВО FREEPOSE
+            // Исходные пропорции по умолчанию (100%)
             Vector3 configThigh = Vector3.one;
             Vector3 configShin = Vector3.one;
             Vector3 configFoot = Vector3.one;
 
-            // ИЗОЛИРОВАННОЕ БЕЗОПАСНОЕ ЧТЕНИЕ СЛАЙДЕРОВ МЕГАМОРФА
+            // ЖЕЛЕЗОБЕТОННАЯ ЗАЩИТА СЛОВАРЕЙ:
+            // Сначала проверяем существование ключей, чтобы dynamic никогда не вылетал в ошибку!
             if (megaMorphComp != null)
             {
                 try
                 {
                     dynamic megaMorph = megaMorphComp;
+                    var dict = megaMorph.offsets;
 
-                    // Проверяем, существует ли вообще словарь в памяти клона во FreePose
-                    if (megaMorph.offsets != null)
+                    if (dict != null)
                     {
-                        object tObj, sObj, fObj;
+                        // 1. Проверяем бедро
+                        if (dict.ContainsKey(thighKey))
+                        {
+                            object tObj = dict[thighKey];
+                            if (tObj != null) configThigh = ((dynamic)tObj).offset / 100f;
+                        }
 
-                        if (megaMorph.offsets.TryGetValue(thighKey, out tObj) && tObj != null)
-                            configThigh = ((dynamic)tObj).offset / 100f;
+                        // 2. Проверяем голень
+                        string shinKey = shinName + "_scale";
+                        if (dict.ContainsKey(shinKey))
+                        {
+                            object sObj = dict[shinKey];
+                            if (sObj != null) configShin = ((dynamic)sObj).offset / 100f;
+                        }
 
-                        if (megaMorph.offsets.TryGetValue(shinName + "_scale", out sObj) && sObj != null)
-                            configShin = ((dynamic)sObj).offset / 100f;
-
-                        if (megaMorph.offsets.TryGetValue(footName + "_scale", out fObj) && fObj != null)
-                            configFoot = ((dynamic)fObj).offset / 100f;
+                        // 3. Проверяем стопу
+                        string footKey = footName + "_scale";
+                        if (dict.ContainsKey(footKey))
+                        {
+                            object fObj = dict[footKey];
+                            if (fObj != null) configFoot = ((dynamic)fObj).offset / 100f;
+                        }
                     }
                 }
                 catch (Exception)
                 {
-                    // Если словари на клоне еще не инициализированы — мягко глушим ошибку,
-                    // оставляя дефолтные масштабы, чтобы каскад расчетов НЕ падал!
+                    // Мягкая заглушка для безопасности
                 }
             }
 
@@ -128,7 +139,8 @@ namespace MMorphFix
                 Vector3.Magnitude(footRot * Vector3.right * currentCombinedParentScale.x),
                 Vector3.Magnitude(footRot * Vector3.up * currentCombinedParentScale.y),
                 Vector3.Magnitude(footRot * Vector3.forward * currentCombinedParentScale.z)
-            ));
+            )
+            );
 
             Vector3 pelvisScale = SanitizeVector(thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one);
 
