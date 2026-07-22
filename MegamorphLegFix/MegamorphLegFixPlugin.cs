@@ -161,14 +161,28 @@ namespace MMorphFix
         {
             if (__instance == null) return;
 
-            // Если активен FreePose, обычный LateUpdate игнорируем, так как для него работают выделенные патчи гизмо выше
             bool isFreePoseActive = Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.isActiveAndEnabled;
             if (!isFreePoseActive)
             {
-                LegEqualizerCore.ExecuteFix(__instance, "ИГРОВОЙ_МИР");
+                // Вместо мгновенного вызова запускаем корутину ожидания конца кадра,
+                // чтобы намертво перебить запеченные масштабы из анимации мебели (Furniture)
+                __instance.StartCoroutine(RunFixAtEndOfFrame(__instance));
+            }
+        }
+
+        private static System.Collections.IEnumerator RunFixAtEndOfFrame(CharacterCustomization cc)
+        {
+            // Ждем, пока отработают ВСЕ аниматоры, физика мебели и скиннинг Unity в этом кадре
+            yield return new UnityEngine.WaitForEndOfFrame();
+
+            if (cc != null)
+            {
+                // Наносим финальный матричный удар, когда кости уже никто не сможет перезаписать
+                LegEqualizerCore.ExecuteFix(cc, "КОНЕЦ_КАДРА_МЕБЕЛЬ");
             }
         }
     }
+
 
     // ХУК: Перехватываем клик по любой встроенной позе из коллекции игры
     [HarmonyPatch(typeof(UIFreePose), "PoseButtonClicked")]
