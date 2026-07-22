@@ -176,7 +176,9 @@ namespace MMorphFix
             if (isMainPlayer && processOk)
             {
                 MMorphFixPlugin.FixExecutionCalls++;
-                MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Каскадный двойной щит активен.";
+                // ИСПРАВЛЕНО: Теперь на радар честно выводится источник вызова (source), 
+                // и вы увидите надпись МЕБЕЛЬ или ИГРОВОЙ_МИР прямо на экране!
+                MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Щит активен [{source}]";
             }
         }
 
