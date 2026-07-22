@@ -1,11 +1,12 @@
 ﻿using System;
+using System.Reflection;
 using BepInEx;
 using HarmonyLib;
 using UnityEngine;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.0.9")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.5.0")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Инициализация...";
@@ -18,15 +19,40 @@ namespace MMorphFix
         private void Awake()
         {
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
+
+            // ХУК 1: Патч редактора Мегаморфа (DoUpdate)
+            Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph")
+                                 ?? AccessTools.TypeByName("MegaMorph.MegaMorph");
+            if (megaMorphType != null)
+            {
+                var original = AccessTools.Method(megaMorphType, "DoUpdate");
+                var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
+                harmony.Patch(original, null, new HarmonyMethod(postfix));
+                DebugMonitorText = "Хук Мегаморфа успешно установлен!";
+            }
+
+            // ХУК 2: Патч гизмо-редактора FreePose (Из старого прототипа Сборки 4.0!)
+            Type gizmoType = AccessTools.TypeByName("TransformGizmo")
+                             ?? AccessTools.TypeByName("AdvancedFreePoseMode.TransformGizmo");
+            if (gizmoType != null)
+            {
+                var originalGizmo = AccessTools.Method(gizmoType, "DoUpdate");
+                var postfixGizmo = AccessTools.Method(typeof(FreePoseGizmoPatch), "Postfix");
+                if (originalGizmo != null)
+                {
+                    harmony.Patch(originalGizmo, null, new HarmonyMethod(postfixGizmo));
+                    DebugMonitorText += " | Хук FreePose Гизмо Активен!";
+                }
+            }
+
+            // ХУК 3: Сквозной контроль для обычного мира через LateUpdate
             try
             {
-                // Автоматически активируем [HarmonyPatch] на LateUpdate игры
                 harmony.PatchAll();
-                DebugMonitorText = "Глобальный захват LateUpdate активен.";
             }
             catch (Exception ex)
             {
-                DebugMonitorText = $"Ошибка Harmony: {ex.Message}";
+                Logger.LogError($"Ошибка Harmony PatchAll: {ex.Message}");
             }
         }
 
@@ -37,7 +63,7 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (LateUpdate-v9)");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.0)");
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
                 fontSize = 12,
@@ -58,7 +84,29 @@ namespace MMorphFix
         }
     }
 
-    // ГЛОБАЛЬНЫЙ ПЕРЕХВАТ ИГРЫ (Философия Диорамы)
+    public static class MegamorphDoUpdatePatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            if (__instance == null) return;
+            CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
+            if (cc != null) LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ_DOUPDATE");
+        }
+    }
+
+    // Захват персонажа во FreePose по глобальной ссылке из прототипа 4.0!
+    public static class FreePoseGizmoPatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГЕОМЕТРИЯ_ГИЗМО");
+            }
+        }
+    }
+
     [HarmonyPatch(typeof(CharacterCustomization), "LateUpdate")]
     public static class GameLateUpdatePatch
     {
@@ -67,14 +115,11 @@ namespace MMorphFix
         {
             if (__instance == null) return;
 
-            // Как в Диораме: проверяем наличие компонента Мегаморфа на этом же объекте
-            // Мы используем поиск по имени класса "MegaMorph", чтобы Unity нашла его независимо от namespace
-            Component megaMorphComp = __instance.gameObject.GetComponent("MegaMorph");
-
-            if (megaMorphComp != null)
+            // Во FreePose обычный LateUpdate игнорируем, чтобы не мешать анимациям
+            bool isFreePoseActive = Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.isActiveAndEnabled;
+            if (!isFreePoseActive)
             {
-                // Если нашли — передаем управление в ядро расчетов
-                LegEqualizerCore.ExecuteFix(__instance, megaMorphComp, "ИГРА_LATEUPDATE");
+                LegEqualizerCore.ExecuteFix(__instance, "ИГРА_LATEUPDATE");
             }
         }
     }
