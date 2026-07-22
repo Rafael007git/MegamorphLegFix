@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.6.0")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.7.0")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Инициализация...";
