@@ -115,12 +115,11 @@ namespace MMorphFix
             Transform twist = FindChildRecursive(thighBone, twistName);
             if (twist != null) twist.localScale = Vector3.one;
 
+            // Читаем чистые пропорции слайдеров Мегаморфа (Источник Истины)
             Vector3 configThigh = Vector3.one;
             Vector3 configShin = Vector3.one;
             Vector3 configFoot = Vector3.one;
 
-            // Если Мегаморф на персонаже активен — извлекаем чистые ползунки. 
-            // Для Киры TryGetValue просто вернет false БЕЗ вылета и падения
             if (megaMorph != null && megaMorph.offsets != null)
             {
                 if (megaMorph.offsets.TryGetValue(thighKey, out var thighOffset)) configThigh = thighOffset.offset / 100f;
@@ -130,39 +129,40 @@ namespace MMorphFix
 
             Vector3 liveThighScale = SanitizeVector(thighBone.localScale);
 
-            // --- КАСКАДНАЯ МАТРИЧНАЯ ИНВЕРСИЯ (КОЛЕННЫЙ СУСТАВ) ---
+            // --- ИСПРАВЛЕННЫЙ АНАТОМИЧЕСКИЙ РАСЧЕТ КОЛЕНА (Билд 6.0) ---
             Quaternion shinRot = shin.localRotation;
-            Vector3 parentScaleInShinSpace = SanitizeVector(new Vector3(
-                Vector3.Magnitude(shinRot * Vector3.right * liveThighScale.x),
-                Vector3.Magnitude(shinRot * Vector3.up * liveThighScale.y),
-                Vector3.Magnitude(shinRot * Vector3.forward * liveThighScale.z)
-            ));
 
-            shin.localScale = new Vector3(
-                configShin.x / parentScaleInShinSpace.x,
-                configShin.y / parentScaleInShinSpace.y,
-                configShin.z / parentScaleInShinSpace.z
+            // Узнаем, насколько сильно оси бедра отличаются друг от друга (ищем нелинейное сплющивание)
+            // configThigh.x — это эталонная толщина. Мы смотрим, насколько длина (Y) меньше толщины
+            float thighFlatteningRatio = liveThighScale.y / (Mathf.Abs(liveThighScale.x) > 0.001f ? liveThighScale.x : 1f);
+            if (Mathf.Abs(thighFlatteningRatio) < 0.01f) thighFlatteningRatio = 1f;
+
+            // Проецируем коэффициент сплющенности бедра на текущий поворот колена гизмо
+            // Если колено прямое, проекция равна 1. Если согнуто на 90 градусов, ось Y ложится на Z
+            Vector3 rotationProjectedCompensation = new Vector3(
+                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.right, Vector3.forward))),
+                Mathf.Lerp(1f, thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.up, Vector3.forward))),
+                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.forward, Vector3.forward)))
             );
 
-            // --- КАСКАДНАЯ МАТРИЧНАЯ ИНВЕРСИЯ (ГОЛЕНОСТОП) ---
+            // Финальный масштаб голени: берем чистый слайдер из Мегаморфа (configShin)
+            // и умножаем ТОЛЬКО на компенсирующий коэффициент сгиба колена.
+            // Теперь при прямой ноге голень будет РОВНО равна твоему слайдеру (0.85, 0.85, 0.85)!
+            shin.localScale = new Vector3(
+                configShin.x * rotationProjectedCompensation.x,
+                configShin.y * rotationProjectedCompensation.y,
+                configShin.z * rotationProjectedCompensation.z
+            );
+
+            // --- ИСПРАВЛЕННЫЙ РАСЧЕТ ГОЛЕНОСТОПА ---
             Quaternion footRot = foot.localRotation;
             Vector3 currentCombinedParentScale = SanitizeVector(shin.lossyScale);
-
-            Vector3 parentScaleInFootSpace = SanitizeVector(new Vector3(
-                Vector3.Magnitude(footRot * Vector3.right * currentCombinedParentScale.x),
-                Vector3.Magnitude(footRot * Vector3.up * currentCombinedParentScale.y),
-                Vector3.Magnitude(footRot * Vector3.forward * currentCombinedParentScale.z)
-            ));
-
             Vector3 pelvisScale = SanitizeVector(thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one);
 
-            foot.localScale = new Vector3(
-                (configFoot.x * pelvisScale.x) / parentScaleInFootSpace.x,
-                (configFoot.y * pelvisScale.y) / parentScaleInFootSpace.y,
-                (configFoot.z * pelvisScale.z) / parentScaleInFootSpace.z
-            );
+            // Выравниваем стопу строго по её ползунку из Мегаморфа, нейтрализуя кручение голени
+            foot.localScale = configFoot;
 
-            // Отрисовываем радар только для главного игрока
+            // --- ОТПРАВКА ДАННЫХ НА РАДАР ---
             if (isMainPlayer)
             {
                 string side = thighBone.name.StartsWith("l") ? "ЛЕВАЯ" : "ПРАВАЯ";
