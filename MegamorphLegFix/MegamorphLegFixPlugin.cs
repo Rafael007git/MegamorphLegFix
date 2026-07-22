@@ -5,7 +5,7 @@ using UnityEngine;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.0.8")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.0.9")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Инициализация...";
@@ -13,19 +13,27 @@ namespace MMorphFix
         public static int FixExecutionCalls = 0;
         public static string LastFoundCharacter = "Никого";
         public static string LeftLegTelemetry = "L: Ожидание суккуба...";
-        public static string RightLegTelemetry = "R: Ожидание суккуба...";
+        public static string RightLegTelemetry = "R: Ожидание suккуба...";
 
         private void Awake()
         {
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
-            try
+
+            // Захватываем точный тип Мегаморфа из логов HarmonyX
+            Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph");
+            if (megaMorphType == null) megaMorphType = AccessTools.TypeByName("MegaMorph.MegaMorph");
+
+            if (megaMorphType != null)
             {
-                harmony.PatchAll();
-                DebugMonitorText = "Каскадный фикс 8 суккубов активен.";
+                // Цепляемся к его DoUpdate. Раз ползунки работают — этот метод вызывается 100%!
+                var original = AccessTools.Method(megaMorphType, "DoUpdate");
+                var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
+                harmony.Patch(original, null, new HarmonyMethod(postfix));
+                DebugMonitorText = "Захват Диорамы через MegaMorph активен.";
             }
-            catch (Exception ex)
+            else
             {
-                DebugMonitorText = $"Ошибка Harmony: {ex.Message}";
+                DebugMonitorText = "КРИТИЧЕСКАЯ ОШИБКА: Компонент MegaMorph не найден в памяти!";
             }
         }
 
@@ -36,7 +44,7 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (v0.0.8)");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (Diorama-v9)");
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
                 fontSize = 12,
@@ -57,19 +65,19 @@ namespace MMorphFix
         }
     }
 
-    [HarmonyPatch(typeof(CharacterCustomization), "LateUpdate")]
-    public static class GameLateUpdatePatch
+    public static class MegamorphDoUpdatePatch
     {
-        [HarmonyPostfix]
-        public static void Postfix(CharacterCustomization __instance)
+        public static void Postfix(MonoBehaviour __instance)
         {
             if (__instance == null) return;
 
-            // Проверяем, есть ли на персонаже рабочий компонент Мегаморфа
-            Component megaMorphComp = __instance.gameObject.GetComponent("MegaMorph");
-            if (megaMorphComp != null)
+            // Как в Диораме: вытаскиваем CharacterCustomization, который привязан к этому скрипту Мегаморфа
+            CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
+
+            if (cc != null)
             {
-                LegEqualizerCore.ExecuteFix(__instance, megaMorphComp, "LATEUPDATE");
+                // Передаем cc и сам компонент Мегаморфа в наше ядро расчетов
+                LegEqualizerCore.ExecuteFix(cc, __instance, "МЕГАМОРФ_DOUPDATE");
             }
         }
     }
