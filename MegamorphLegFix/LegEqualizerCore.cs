@@ -7,60 +7,50 @@ namespace MMorphFix
     {
         private static bool _isProcessing = false;
 
-        // Массив всех 8 легальных суккубов игры
-        private static readonly string[] AllowedSuccubusNames = new string[]
-        {
-            "Player", "Kira", "Arisha", "Diliana", "Kerila", "Lanora", "Mirena", "Rowena"
-        };
-
         public static void ExecuteFix(CharacterCustomization cc, object megaMorphInstance, string source)
         {
             if (cc == null || megaMorphInstance == null || _isProcessing) return;
 
-            // --- СТРОГИЙ ФИЛЬТР 8 СУККУБОВ ---
-            string objName = cc.gameObject.name;
-            bool isAllowedSuccubus = false;
-
-            foreach (string name in AllowedSuccubusNames)
-            {
-                // Проверяем, начинается ли имя 3D-объекта (или содержит ли) одно из 8 имён суккубов.
-                // Это сработает и на "Player", и на "Kira(Clone)", и на "Arisha_FreePose".
-                if (objName.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    isAllowedSuccubus = true;
-                    break;
-                }
-            }
-
-            // Если это не одна из 8 героинь, мгновенно выходим
-            if (!isAllowedSuccubus) return;
+            // Если скелет еще пуст, пропускаем кадр
+            if (cc.bones == null || cc.bones.Length == 0) return;
 
             _isProcessing = true;
 
             try
             {
+                // Выводим РЕАЛЬНОЕ имя 3D-объекта, которое Unity дала персонажу на сцене!
                 MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
 
-                if (cc.bones == null || cc.bones.Length == 0) return;
-
                 dynamic megaMorph = megaMorphInstance;
+                bool leftOk = false;
+                bool rightOk = false;
 
                 foreach (Transform bone in cc.bones)
                 {
                     if (bone == null) continue;
 
+                    // Анатомический фильтр Genesis 8
                     if (bone.name.Equals("lThighBend", StringComparison.OrdinalIgnoreCase))
                     {
                         ApplyDirectOffsetsFix(bone, "lThighTwist", "lShin", "lFoot", "lThighBend_scale", megaMorph);
+                        leftOk = true;
                     }
                     else if (bone.name.Equals("rThighBend", StringComparison.OrdinalIgnoreCase))
                     {
                         ApplyDirectOffsetsFix(bone, "rThighTwist", "rShin", "rFoot", "rThighBend_scale", megaMorph);
+                        rightOk = true;
                     }
                 }
 
-                MMorphFixPlugin.FixExecutionCalls++;
-                MMorphFixPlugin.DebugMonitorText = "Матричная инверсия удерживает форму ног.";
+                if (leftOk || rightOk)
+                {
+                    MMorphFixPlugin.FixExecutionCalls++;
+                    MMorphFixPlugin.DebugMonitorText = "Анатомический захват успешен. Ноги защищены.";
+                }
+                else
+                {
+                    MMorphFixPlugin.DebugMonitorText = "ВНИМАНИЕ: На объекте нет костей lThighBend/rThighBend!";
+                }
             }
             catch (Exception ex)
             {
@@ -87,7 +77,7 @@ namespace MMorphFix
 
             object tObj, sObj, fObj;
 
-            // Вытягиваем чистые результирующие параметры слайдеров Мегаморфа в реальном времени
+            // Вытягиваем чистые значения ползунков Мегаморфа из его внутренней памяти
             if (megaMorph.offsets.TryGetValue(thighKey, out tObj) && tObj != null)
             {
                 dynamic dObj = tObj;
@@ -106,7 +96,7 @@ namespace MMorphFix
 
             Vector3 liveThighScale = thighBone.localScale;
 
-            // --- МАТРИЧНАЯ ИНВЕРСИЯ ОСЕЙ (КОЛЕННЫЙ СУСТАВ) ---
+            // --- КАСКАДНАЯ МАТРИЧНАЯ ИНВЕРСИЯ (КОЛЕННЫЙ СУСТАВ) ---
             Quaternion shinRot = shin.localRotation;
             Vector3 parentScaleInShinSpace = new Vector3(
                 Vector3.Magnitude(shinRot * Vector3.right * liveThighScale.x),
@@ -120,7 +110,7 @@ namespace MMorphFix
                 configShin.z / (Mathf.Abs(parentScaleInShinSpace.z) > 0.001f ? parentScaleInShinSpace.z : 1f)
             );
 
-            // --- МАТРИЧНАЯ ИНВЕРСИЯ ОСЕЙ (ГОЛЕНОСТОП) ---
+            // --- КАСКАДНАЯ МАТРИЧНАЯ ИНВЕРСИЯ (ГОЛЕНОСТОП) ---
             Quaternion footRot = foot.localRotation;
             Vector3 currentCombinedParentScale = shin.lossyScale;
 
@@ -132,19 +122,18 @@ namespace MMorphFix
 
             Vector3 pelvisScale = thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one;
 
-            // ПОЛНОСТЬЮ ИСПРАВЛЕНО: Все три оси стопы делятся на строго существующий parentScaleInFootSpace
             foot.localScale = new Vector3(
                 (configFoot.x * pelvisScale.x) / (Mathf.Abs(parentScaleInFootSpace.x) > 0.001f ? parentScaleInFootSpace.x : 1f),
                 (configFoot.y * pelvisScale.y) / (Mathf.Abs(parentScaleInFootSpace.y) > 0.001f ? parentScaleInFootSpace.y : 1f),
                 (configFoot.z * pelvisScale.z) / (Mathf.Abs(parentScaleInFootSpace.z) > 0.001f ? parentScaleInFootSpace.z : 1f)
             );
 
-            // --- ТЕЛЕМЕТРИЯ НА РАДАР ---
+            // --- ОБНОВЛЕНИЕ ДАННЫХ ТЕЛЕМЕТРИИ НА РАДАРЕ ---
             string side = thighBone.name.StartsWith("l") ? "ЛЕВАЯ" : "ПРАВАЯ";
             string telemetry =
-                $"[{side} НОГА] Слайдер_Бедра: {configThigh.ToString("F2")} | Слайдер_Голени: {configShin.ToString("F2")}\n" +
+                $"[{side} НОГА] Ползунок_Бедра: {configThigh.ToString("F2")} | Ползунок_Голени: {configShin.ToString("F2")}\n" +
                 $"            -> Угол колена гизмо: {shinRot.eulerAngles.ToString("F0")}°\n" +
-                $"            -> Итоговый скейл голени: {shin.localScale.ToString("F2")} | Стопы: {foot.localScale.ToString("F2")}";
+                $"            -> Итоговый scale голени: {shin.localScale.ToString("F2")} | Стопы: {foot.localScale.ToString("F2")}";
 
             if (thighBone.name.StartsWith("l"))
                 MMorphFixPlugin.LeftLegTelemetry = telemetry;

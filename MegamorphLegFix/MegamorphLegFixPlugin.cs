@@ -13,27 +13,20 @@ namespace MMorphFix
         public static int FixExecutionCalls = 0;
         public static string LastFoundCharacter = "Никого";
         public static string LeftLegTelemetry = "L: Ожидание суккуба...";
-        public static string RightLegTelemetry = "R: Ожидание suккуба...";
+        public static string RightLegTelemetry = "R: Ожидание суккуба...";
 
         private void Awake()
         {
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
-
-            // Захватываем точный тип Мегаморфа из логов HarmonyX
-            Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph");
-            if (megaMorphType == null) megaMorphType = AccessTools.TypeByName("MegaMorph.MegaMorph");
-
-            if (megaMorphType != null)
+            try
             {
-                // Цепляемся к его DoUpdate. Раз ползунки работают — этот метод вызывается 100%!
-                var original = AccessTools.Method(megaMorphType, "DoUpdate");
-                var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
-                harmony.Patch(original, null, new HarmonyMethod(postfix));
-                DebugMonitorText = "Захват Диорамы через MegaMorph активен.";
+                // Автоматически активируем [HarmonyPatch] на LateUpdate игры
+                harmony.PatchAll();
+                DebugMonitorText = "Глобальный захват LateUpdate активен.";
             }
-            else
+            catch (Exception ex)
             {
-                DebugMonitorText = "КРИТИЧЕСКАЯ ОШИБКА: Компонент MegaMorph не найден в памяти!";
+                DebugMonitorText = $"Ошибка Harmony: {ex.Message}";
             }
         }
 
@@ -44,7 +37,7 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (Diorama-v9)");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (LateUpdate-v9)");
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
                 fontSize = 12,
@@ -65,19 +58,23 @@ namespace MMorphFix
         }
     }
 
-    public static class MegamorphDoUpdatePatch
+    // ГЛОБАЛЬНЫЙ ПЕРЕХВАТ ИГРЫ (Философия Диорамы)
+    [HarmonyPatch(typeof(CharacterCustomization), "LateUpdate")]
+    public static class GameLateUpdatePatch
     {
-        public static void Postfix(MonoBehaviour __instance)
+        [HarmonyPostfix]
+        public static void Postfix(CharacterCustomization __instance)
         {
             if (__instance == null) return;
 
-            // Как в Диораме: вытаскиваем CharacterCustomization, который привязан к этому скрипту Мегаморфа
-            CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
+            // Как в Диораме: проверяем наличие компонента Мегаморфа на этом же объекте
+            // Мы используем поиск по имени класса "MegaMorph", чтобы Unity нашла его независимо от namespace
+            Component megaMorphComp = __instance.gameObject.GetComponent("MegaMorph");
 
-            if (cc != null)
+            if (megaMorphComp != null)
             {
-                // Передаем cc и сам компонент Мегаморфа в наше ядро расчетов
-                LegEqualizerCore.ExecuteFix(cc, __instance, "МЕГАМОРФ_DOUPDATE");
+                // Если нашли — передаем управление в ядро расчетов
+                LegEqualizerCore.ExecuteFix(__instance, megaMorphComp, "ИГРА_LATEUPDATE");
             }
         }
     }
