@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.5.0")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.5.5")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Инициализация...";
@@ -20,39 +20,43 @@ namespace MMorphFix
         {
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
 
-            // ХУК 1: Патч редактора Мегаморфа (DoUpdate)
+            // Хук 1: Патч редактора Мегаморфа (DoUpdate)
             Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph")
-                                 ?? AccessTools.TypeByName("MegaMorph.MegaMorph");
+                                 ?? AccessTools.TypeByName("MegaMorph.MegaMorph")
+                                 ?? AccessTools.TypeByName("MegaMorph");
             if (megaMorphType != null)
             {
                 var original = AccessTools.Method(megaMorphType, "DoUpdate");
                 var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
-                harmony.Patch(original, null, new HarmonyMethod(postfix));
-                DebugMonitorText = "Хук Мегаморфа успешно установлен!";
+                if (original != null && postfix != null)
+                {
+                    harmony.Patch(original, null, new HarmonyMethod(postfix));
+                    DebugMonitorText = "Хук Мегаморфа ОК.";
+                }
             }
 
-            // ХУК 2: Патч гизмо-редактора FreePose (Из старого прототипа Сборки 4.0!)
+            // Хук 2: Патч гизмо-редактора FreePose (Из старого прототипа Сборки 4.0)
             Type gizmoType = AccessTools.TypeByName("TransformGizmo")
                              ?? AccessTools.TypeByName("AdvancedFreePoseMode.TransformGizmo");
             if (gizmoType != null)
             {
                 var originalGizmo = AccessTools.Method(gizmoType, "DoUpdate");
                 var postfixGizmo = AccessTools.Method(typeof(FreePoseGizmoPatch), "Postfix");
-                if (originalGizmo != null)
+                if (originalGizmo != null && postfixGizmo != null)
                 {
                     harmony.Patch(originalGizmo, null, new HarmonyMethod(postfixGizmo));
-                    DebugMonitorText += " | Хук FreePose Гизмо Активен!";
+                    DebugMonitorText += " | Хук Гизмо ОК.";
                 }
             }
 
-            // ХУК 3: Сквозной контроль для обычного мира через LateUpdate
+            // Хук 3: Сквозной контроль для обычного мира через LateUpdate
             try
             {
                 harmony.PatchAll();
             }
             catch (Exception ex)
             {
-                Logger.LogError($"Ошибка Harmony PatchAll: {ex.Message}");
+                DebugMonitorText += $" | Ошибка PatchAll: {ex.Message}";
             }
         }
 
@@ -63,7 +67,7 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.0)");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.5)");
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
                 fontSize = 12,
@@ -90,11 +94,10 @@ namespace MMorphFix
         {
             if (__instance == null) return;
             CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
-            if (cc != null) LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ_DOUPDATE");
+            if (cc != null) LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ");
         }
     }
 
-    // Захват персонажа во FreePose по глобальной ссылке из прототипа 4.0!
     public static class FreePoseGizmoPatch
     {
         public static void Postfix(MonoBehaviour __instance)
@@ -102,7 +105,7 @@ namespace MMorphFix
             if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
             {
                 CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
-                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГЕОМЕТРИЯ_ГИЗМО");
+                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГИЗМО");
             }
         }
     }
@@ -115,11 +118,10 @@ namespace MMorphFix
         {
             if (__instance == null) return;
 
-            // Во FreePose обычный LateUpdate игнорируем, чтобы не мешать анимациям
             bool isFreePoseActive = Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.isActiveAndEnabled;
             if (!isFreePoseActive)
             {
-                LegEqualizerCore.ExecuteFix(__instance, "ИГРА_LATEUPDATE");
+                LegEqualizerCore.ExecuteFix(__instance, "LATEUPDATE");
             }
         }
     }
