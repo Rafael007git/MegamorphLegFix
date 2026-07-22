@@ -1,6 +1,7 @@
 ﻿extern alias MM;
 
 using MM::MegaMorph;
+using System;
 using UnityEngine;
 
 namespace MMorphFix
@@ -10,22 +11,30 @@ namespace MMorphFix
         /// <summary>
         /// ЭТАП 1 и 2: Защита сустава в изолированном матричном бункере в памяти
         /// </summary>
-        public static void ProtectJoint(Transform parentBone, Transform childBone, Vector3 idealCascadeScale)
+        public static void ProtectJoint(
+            Transform childBone,
+            Vector3 idealChildScale,
+            Vector3 idealParentScale,
+            Vector3 idealGrandparentScale)
         {
-            // ЛОВУШКА КНОПКИ: Если пользователь выключил щит на радаре, 
-            // мы мгновенно выходим, позволяя Unity и оригинальному Мегаморфу ломать кости.
             if (!MMorphFixPlugin.IsFixEnabled) return;
 
             Quaternion localRot = childBone.localRotation;
 
-            // Виртуальная локальная матрица дочерней кости без собственного масштаба
+            // 1. Виртуальная матрица сустава (только изгиб, масштаб чистая единица)
             Matrix4x4 localMatrix = Matrix4x4.TRS(Vector3.zero, localRot, Vector3.one);
 
-            // Моделируем в памяти Unity-наследование от ТЕКУЩЕГО ЖИВОГО родителя со сцены
-            Matrix4x4 parentScaleMatrix = Matrix4x4.Scale(SanitizeVector(parentBone.localScale));
+            // 2. ВМЕСТО ЛОКАЛЬНЫХ КОСТЕЙ СЦЕНЫ: Строим честный масштаб родителей из памяти Мегаморфа!
+            // Перемножаем эталон бедра и эталон твиста, полученные из словаря Мегаморфа.
+            // Это автоматически учитывает ВСЕ десятки ползунков, которые на них повлияли.
+            Vector3 accumulatedParentScale = Vector3.Scale(idealGrandparentScale, idealParentScale);
+            accumulatedParentScale = SanitizeVector(accumulatedParentScale);
+
+            // 3. Загружаем этот честный каскад в матрицу искажения
+            Matrix4x4 parentScaleMatrix = Matrix4x4.Scale(accumulatedParentScale);
             Matrix4x4 combinedMatrix = parentScaleMatrix * localMatrix;
 
-            // Извлекаем длины векторов получившейся матрицы (чистое искажение)
+            // 4. Вычисляем чистый вектор пространственной деформации колена
             Vector3 inheritedDistortion = new Vector3(
                 combinedMatrix.GetColumn(0).magnitude,
                 combinedMatrix.GetColumn(1).magnitude,
@@ -37,13 +46,14 @@ namespace MMorphFix
             inheritedDistortion.y = Mathf.Abs(inheritedDistortion.y) < 0.001f ? 1f : inheritedDistortion.y;
             inheritedDistortion.z = Mathf.Abs(inheritedDistortion.z) < 0.001f ? 1f : inheritedDistortion.z;
 
-            // Накатывание эмулированной «Истины»
+            // 5. НАКАТЫВАНИЕ: Корректируем локальный масштаб голени
             childBone.localScale = new Vector3(
-                idealCascadeScale.x / inheritedDistortion.x,
-                idealCascadeScale.y / inheritedDistortion.y,
-                idealCascadeScale.z / inheritedDistortion.z
+                idealChildScale.x / inheritedDistortion.x,
+                idealChildScale.y / inheritedDistortion.y,
+                idealChildScale.z / inheritedDistortion.z
             );
         }
+
 
         /// <summary>
         /// Безопасное извлечение дельты ползунка из памяти Мегаморфа

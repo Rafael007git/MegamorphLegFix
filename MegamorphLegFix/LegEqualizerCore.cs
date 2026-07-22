@@ -57,14 +57,17 @@ namespace MMorphFix
             if (isMainPlayer)
                 _pelvisTelemetry = $"[ТАЗ] pelvis scale: {MegamorphMathCore.SanitizeVector(pelvis.localScale).ToString("F2")}";
 
-            // --- ШАГ 0: ИСТИННЫЙ ЭТАЛОН (v0.8.0) — ЭТО ЧИСТЫЕ ПОЛЗУНКИ ИЗ КОНФИГА МЕГАМОРФА ---
-            // Больше никакого ручного искусственного перемножения векторов!
-            // Unity и Мегаморф сами знают, как масштабировать прямую ногу.
+            // --- ШАГ 0: СБОР ЧИСТЫХ ЭТАЛОНОВ ИЗ ПАМЯТИ МЕГАМОРФА (v0.9.0) ---
+            // Мегаморф уже посчитал финальные числа для прямой ноги с учетом ВСЕХ слайдеров целлюлита/объемов.
+            Vector3 idealPelvis = MegamorphMathCore.GetMegamorphScale(megaMorph, "pelvis_scale");
+
+            // Левая нога (Прямые эталоны)
             Vector3 idealLThighBend = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighBend_scale");
             Vector3 idealLThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale");
             Vector3 idealLShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "lShin_scale");
             Vector3 idealLFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "lFoot_scale");
 
+            // Правая нога (Прямые эталоны)
             Vector3 idealRThighBend = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighBend_scale");
             Vector3 idealRThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale");
             Vector3 idealRShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "rShin_scale");
@@ -72,9 +75,9 @@ namespace MMorphFix
 
             bool processOk = false;
 
-            // ==========================================
-            // ПРОХОД №1: ЗАЩИТА РЕАЛЬНОГО СКЕЛЕТА ПЕРСОНАЖА
-            // ==========================================
+            // =================================================================
+            // ПРОХОД №1: ЗАЩИТА РЕАЛЬНОГО СКЕЛЕТА ПЕРСОНАЖА (ИГРОВОЙ МИР / МЕБЕЛЬ)
+            // =================================================================
             Transform lThighBend = FindBoneRecursive(pelvis, "lThighBend");
             Transform lThighTwist = FindBoneRecursive(pelvis, "lThighTwist");
             Transform lShin = FindBoneRecursive(pelvis, "lShin");
@@ -82,11 +85,17 @@ namespace MMorphFix
 
             if (lThighBend != null && lShin != null && lFoot != null)
             {
-                MegamorphMathCore.ProtectJoint(pelvis, lThighBend, idealLThighBend);
-                if (lThighTwist != null) lThighTwist.localScale = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale");
+                // 1. Тазобедренный сустав: зависит от Таза (родитель для ThighBend — pelvis)
+                MegamorphMathCore.ProtectJoint(lThighBend, idealLThighBend, idealPelvis, Vector3.one);
 
-                MegamorphMathCore.ProtectJoint(lThighTwist != null ? lThighTwist : lThighBend, lShin, idealLShin);
-                MegamorphMathCore.ProtectJoint(lShin, lFoot, idealLFoot);
+                // Промежуточный твист не гнется, накатываем на него чистый эталон
+                if (lThighTwist != null) lThighTwist.localScale = idealLThighTwist;
+
+                // 2. Коленный сустав: зависит от Бедра и Твиста (родитель для Shin — ThighTwist, деформация идет от ThighBend)
+                MegamorphMathCore.ProtectJoint(lShin, idealLShin, idealLThighTwist, idealLThighBend);
+
+                // 3. Голеностопный сустав: зависит от Голени и Твиста (родитель для Foot — lShin)
+                MegamorphMathCore.ProtectJoint(lFoot, idealLFoot, idealLShin, idealLThighTwist);
 
                 if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
                     UpdateLegTelemetry("ЛЕВАЯ", lThighBend, lShin, lFoot, idealLShin, idealLFoot);
@@ -100,20 +109,24 @@ namespace MMorphFix
 
             if (rThighBend != null && rShin != null && rFoot != null)
             {
-                MegamorphMathCore.ProtectJoint(pelvis, rThighBend, idealRThighBend);
-                if (rThighTwist != null) rThighTwist.localScale = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale");
+                // 4. Тазобедренный сустав
+                MegamorphMathCore.ProtectJoint(rThighBend, idealRThighBend, idealPelvis, Vector3.one);
+                if (rThighTwist != null) rThighTwist.localScale = idealRThighTwist;
 
-                MegamorphMathCore.ProtectJoint(rThighTwist != null ? rThighTwist : rThighBend, rShin, idealRShin);
-                MegamorphMathCore.ProtectJoint(rShin, rFoot, idealRFoot);
+                // 5. Коленный сустав
+                MegamorphMathCore.ProtectJoint(rShin, idealRShin, idealRThighTwist, idealRThighBend);
+
+                // 6. Голеностопный сустав
+                MegamorphMathCore.ProtectJoint(rFoot, idealRFoot, idealRShin, idealRThighTwist);
 
                 if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
                     UpdateLegTelemetry("ПРАВАЯ", rThighBend, rShin, rFoot, idealRShin, idealRFoot);
                 processOk = true;
             }
 
-            // ==========================================
-            // ПРОХОД №2: СИНХРОННАЯ ЗАЩИТА ФАНТОМОВ ГИЗМО (FREEPOSE)
-            // ==========================================
+            // =================================================================
+            // ПРОХОД №2: СИНХРОННАЯ ЗАЩИТА ФАНТОМОВ ГИЗМО (РЕЖИМ FREEPOSE)
+            // =================================================================
             if (source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase) || source == "ГЛИФ_ФИКС" || source == "ГЛИФ_РАДАР")
             {
                 Type gizmoType = AccessTools.TypeByName("RuntimeGizmos.TransformGizmo") ?? AccessTools.TypeByName("TransformGizmo");
@@ -133,37 +146,42 @@ namespace MMorphFix
                                 Transform t = obj as Transform;
                                 if (t == null) continue;
 
-                                if (t.name.EndsWith("pelvis", StringComparison.OrdinalIgnoreCase)) fPelvis = t;
-                                else if (t.name.EndsWith("lThighBend", StringComparison.OrdinalIgnoreCase)) fLThighBend = t;
-                                else if (t.name.EndsWith("lThighTwist", StringComparison.OrdinalIgnoreCase)) fLThighTwist = t;
-                                else if (t.name.EndsWith("lShin", StringComparison.OrdinalIgnoreCase)) fLShin = t;
-                                else if (t.name.EndsWith("lFoot", StringComparison.OrdinalIgnoreCase)) fLFoot = t;
-                                else if (t.name.EndsWith("rThighBend", StringComparison.OrdinalIgnoreCase)) fRThighBend = t;
-                                else if (t.name.EndsWith("rThighTwist", StringComparison.OrdinalIgnoreCase)) fRThighTwist = t;
-                                else if (t.name.EndsWith("rShin", StringComparison.OrdinalIgnoreCase)) fRShin = t;
-                                else if (t.name.EndsWith("rFoot", StringComparison.OrdinalIgnoreCase)) fRFoot = t;
+                                switch (t.name)
+                                {
+                                    case string s when s.EndsWith("pelvis", StringComparison.OrdinalIgnoreCase): fPelvis = t; break;
+                                    case string s when s.EndsWith("lThighBend", StringComparison.OrdinalIgnoreCase): fLThighBend = t; break;
+                                    case string s when s.EndsWith("lThighTwist", StringComparison.OrdinalIgnoreCase): fLThighTwist = t; break;
+                                    case string s when s.EndsWith("lShin", StringComparison.OrdinalIgnoreCase): fLShin = t; break;
+                                    case string s when s.EndsWith("lFoot", StringComparison.OrdinalIgnoreCase): fLFoot = t; break;
+                                    case string s when s.EndsWith("rThighBend", StringComparison.OrdinalIgnoreCase): fRThighBend = t; break;
+                                    case string s when s.EndsWith("rThighTwist", StringComparison.OrdinalIgnoreCase): fRThighTwist = t; break;
+                                    case string s when s.EndsWith("rShin", StringComparison.OrdinalIgnoreCase): fRShin = t; break;
+                                    case string s when s.EndsWith("rFoot", StringComparison.OrdinalIgnoreCase): fRFoot = t; break;
+                                }
                             }
 
-                            // Лечим левые фантомы
+                            // Лечим левые фантомы на экране
                             if (fPelvis != null && fLThighBend != null && fLShin != null && fLFoot != null)
                             {
-                                MegamorphMathCore.ProtectJoint(fPelvis, fLThighBend, idealLThighBend);
-                                if (fLThighTwist != null) fLThighTwist.localScale = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale");
+                                MegamorphMathCore.ProtectJoint(fLThighBend, idealLThighBend, idealPelvis, Vector3.one);
+                                if (fLThighTwist != null) fLThighTwist.localScale = idealLThighTwist;
 
-                                MegamorphMathCore.ProtectJoint(fLThighTwist != null ? fLThighTwist : fLThighBend, fLShin, idealLShin);
-                                MegamorphMathCore.ProtectJoint(fLShin, fLFoot, idealLFoot);
+                                MegamorphMathCore.ProtectJoint(fLShin, idealLShin, idealLThighTwist, idealLThighBend);
+                                MegamorphMathCore.ProtectJoint(fLFoot, idealLFoot, idealLShin, idealLThighTwist);
 
+                                if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, idealLShin, idealLFoot);
                                 if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, idealLShin, idealLFoot);
                             }
 
-                            // Лечим правые фантомы (ИСПРАВЛЕНО: строго правые кости в Проходе 2)
+                            // Лечим правые фантомы на экране
                             if (fPelvis != null && fRThighBend != null && fRShin != null && fRFoot != null)
                             {
-                                MegamorphMathCore.ProtectJoint(fPelvis, fRThighBend, idealRThighBend);
-                                if (fRThighTwist != null) fRThighTwist.localScale = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale");
+                                MegamorphMathCore.ProtectJoint(fRThighBend, idealRThighBend, idealPelvis, Vector3.one);
+                                if (fRThighTwist != null) fRThighTwist.localScale = idealRThighTwist;
 
-                                MegamorphMathCore.ProtectJoint(fRThighTwist != null ? fRThighTwist : fRThighBend, fRShin, idealRShin);
-                                MegamorphMathCore.ProtectJoint(fRShin, fRFoot, idealRFoot);
+                                MegamorphMathCore.ProtectJoint(fRShin, idealRShin, idealRThighTwist, idealRThighBend);
+                                MegamorphMathCore.ProtectJoint(fRFoot, idealRFoot, idealRShin, idealRThighTwist);
+
                                 if (isMainPlayer) UpdateLegTelemetry("ПРАВАЯ", fRThighBend, fRShin, fRFoot, idealRShin, idealRFoot);
                             }
                         }
@@ -174,8 +192,6 @@ namespace MMorphFix
             if (isMainPlayer && processOk)
             {
                 MMorphFixPlugin.FixExecutionCalls++;
-                // ИСПРАВЛЕНО: Теперь на радар честно выводится источник вызова (source), 
-                // и вы увидите надпись МЕБЕЛЬ или ИГРОВОЙ_МИР прямо на экране!
                 MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Щит активен [{source}]";
             }
         }
