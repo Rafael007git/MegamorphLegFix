@@ -7,26 +7,42 @@ namespace MMorphFix
     {
         private static bool _isProcessing = false;
 
-        public static void ExecuteFix(CharacterCustomization cc, object megaMorphInstance)
+        // Массив всех 8 легальных суккубов игры
+        private static readonly string[] AllowedSuccubusNames = new string[]
+        {
+            "Player", "Kira", "Arisha", "Diliana", "Kerila", "Lanora", "Mirena", "Rowena"
+        };
+
+        public static void ExecuteFix(CharacterCustomization cc, object megaMorphInstance, string source)
         {
             if (cc == null || megaMorphInstance == null || _isProcessing) return;
 
-            // Фильтр только на персонажа игрока
-            bool isPlayer = cc.gameObject.name.IndexOf("Player", StringComparison.OrdinalIgnoreCase) >= 0 ||
-                            cc.gameObject.CompareTag("Player") ||
-                            (cc.transform.root != null && cc.transform.root.name.IndexOf("Player", StringComparison.OrdinalIgnoreCase) >= 0);
+            // --- СТРОГИЙ ФИЛЬТР 8 СУККУБОВ ---
+            string objName = cc.gameObject.name;
+            bool isAllowedSuccubus = false;
 
-            if (!isPlayer) return;
+            foreach (string name in AllowedSuccubusNames)
+            {
+                // Проверяем, начинается ли имя 3D-объекта (или содержит ли) одно из 8 имён суккубов.
+                // Это сработает и на "Player", и на "Kira(Clone)", и на "Arisha_FreePose".
+                if (objName.IndexOf(name, StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    isAllowedSuccubus = true;
+                    break;
+                }
+            }
+
+            // Если это не одна из 8 героинь, мгновенно выходим
+            if (!isAllowedSuccubus) return;
 
             _isProcessing = true;
 
             try
             {
-                MMorphFixPlugin.LastFoundCharacter = cc.gameObject.name;
+                MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
 
                 if (cc.bones == null || cc.bones.Length == 0) return;
 
-                // Приводим к dynamic для беспрепятственного чтения чужих словарей напрямую
                 dynamic megaMorph = megaMorphInstance;
 
                 foreach (Transform bone in cc.bones)
@@ -44,11 +60,11 @@ namespace MMorphFix
                 }
 
                 MMorphFixPlugin.FixExecutionCalls++;
-                MMorphFixPlugin.DebugMonitorText = "Прямая синхронизация словарей offsets активна.";
+                MMorphFixPlugin.DebugMonitorText = "Матричная инверсия удерживает форму ног.";
             }
             catch (Exception ex)
             {
-                MMorphFixPlugin.DebugMonitorText = $"Ошибка чтения словарей: {ex.Message}";
+                MMorphFixPlugin.DebugMonitorText = $"Ошибка расчетов: {ex.Message}";
             }
             finally
             {
@@ -65,14 +81,13 @@ namespace MMorphFix
             Transform twist = FindChildRecursive(thighBone, twistName);
             if (twist != null) twist.localScale = Vector3.one;
 
-            // ИСТОЧНИК ИСТИНЫ ИЗ ПАМЯТИ МЕГАМОРФА:
-            // Объявляем переменные как object, чтобы компилятор не ругался на out var с dynamic-объектами
             Vector3 configThigh = Vector3.one;
             Vector3 configShin = Vector3.one;
             Vector3 configFoot = Vector3.one;
 
             object tObj, sObj, fObj;
 
+            // Вытягиваем чистые результирующие параметры слайдеров Мегаморфа в реальном времени
             if (megaMorph.offsets.TryGetValue(thighKey, out tObj) && tObj != null)
             {
                 dynamic dObj = tObj;
@@ -89,11 +104,9 @@ namespace MMorphFix
                 configFoot = dObj.offset / 100f;
             }
 
-            // Читаем живой масштаб бедра из кадра
             Vector3 liveThighScale = thighBone.localScale;
 
-            // --- МАТРИЧНАЯ ИНВЕРСИЯ ОСЕЙ ПРИ СГИБАХ ---
-            // Проецируем итоговый масштаб бедра на текущий поворот колена (из FreePose или анимации гизмо)
+            // --- МАТРИЧНАЯ ИНВЕРСИЯ ОСЕЙ (КОЛЕННЫЙ СУСТАВ) ---
             Quaternion shinRot = shin.localRotation;
             Vector3 parentScaleInShinSpace = new Vector3(
                 Vector3.Magnitude(shinRot * Vector3.right * liveThighScale.x),
@@ -101,15 +114,13 @@ namespace MMorphFix
                 Vector3.Magnitude(shinRot * Vector3.forward * liveThighScale.z)
             );
 
-            // Идеальная компенсация: делим чистый эталон голени из словаря (configShin) на перекос повернутых осей бедра
-            Vector3 targetShinScale = new Vector3(
+            shin.localScale = new Vector3(
                 configShin.x / (Mathf.Abs(parentScaleInShinSpace.x) > 0.001f ? parentScaleInShinSpace.x : 1f),
                 configShin.y / (Mathf.Abs(parentScaleInShinSpace.y) > 0.001f ? parentScaleInShinSpace.y : 1f),
                 configShin.z / (Mathf.Abs(parentScaleInShinSpace.z) > 0.001f ? parentScaleInShinSpace.z : 1f)
             );
-            shin.localScale = targetShinScale;
 
-            // Повторяем процедуру для стопы
+            // --- МАТРИЧНАЯ ИНВЕРСИЯ ОСЕЙ (ГОЛЕНОСТОП) ---
             Quaternion footRot = foot.localRotation;
             Vector3 currentCombinedParentScale = shin.lossyScale;
 
@@ -121,6 +132,7 @@ namespace MMorphFix
 
             Vector3 pelvisScale = thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one;
 
+            // ПОЛНОСТЬЮ ИСПРАВЛЕНО: Все три оси стопы делятся на строго существующий parentScaleInFootSpace
             foot.localScale = new Vector3(
                 (configFoot.x * pelvisScale.x) / (Mathf.Abs(parentScaleInFootSpace.x) > 0.001f ? parentScaleInFootSpace.x : 1f),
                 (configFoot.y * pelvisScale.y) / (Mathf.Abs(parentScaleInFootSpace.y) > 0.001f ? parentScaleInFootSpace.y : 1f),
