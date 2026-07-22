@@ -1,0 +1,1992 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+================================================================
+File Summary
+================================================================
+
+Purpose:
+--------
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+
+File Format:
+------------
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  a. A separator line (================)
+  b. The file path (File: path/to/file)
+  c. Another separator line
+  d. The full contents of the file
+  e. A blank line
+
+Usage Guidelines:
+-----------------
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+
+Notes:
+------
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+
+
+================================================================
+Directory Structure
+================================================================
+.gitattributes
+.gitignore
+MegamorphLegFix.slnx
+MegamorphLegFix/LegEqualizerCore.cs
+MegamorphLegFix/MegamorphLegFix.csproj
+MegamorphLegFix/MegamorphLegFixPlugin.cs
+MegamorphLegFix/Properties/AssemblyInfo.cs
+repomix-output.xml
+repomix.config.json
+
+================================================================
+Files
+================================================================
+
+================
+File: .gitattributes
+================
+###############################################################################
+# Set default behavior to automatically normalize line endings.
+###############################################################################
+* text=auto
+
+###############################################################################
+# Set default behavior for command prompt diff.
+#
+# This is need for earlier builds of msysgit that does not have it on by
+# default for csharp files.
+# Note: This is only used by command line
+###############################################################################
+#*.cs     diff=csharp
+
+###############################################################################
+# Set the merge driver for project and solution files
+#
+# Merging from the command prompt will add diff markers to the files if there
+# are conflicts (Merging from VS is not affected by the settings below, in VS
+# the diff markers are never inserted). Diff markers may cause the following 
+# file extensions to fail to load in VS. An alternative would be to treat
+# these files as binary and thus will always conflict and require user
+# intervention with every merge. To do so, just uncomment the entries below
+###############################################################################
+#*.sln       merge=binary
+#*.csproj    merge=binary
+#*.vbproj    merge=binary
+#*.vcxproj   merge=binary
+#*.vcproj    merge=binary
+#*.dbproj    merge=binary
+#*.fsproj    merge=binary
+#*.lsproj    merge=binary
+#*.wixproj   merge=binary
+#*.modelproj merge=binary
+#*.sqlproj   merge=binary
+#*.wwaproj   merge=binary
+
+###############################################################################
+# behavior for image files
+#
+# image files are treated as binary by default.
+###############################################################################
+#*.jpg   binary
+#*.png   binary
+#*.gif   binary
+
+###############################################################################
+# diff behavior for common document formats
+# 
+# Convert binary document formats to text before diffing them. This feature
+# is only available from the command line. Turn it on by uncommenting the 
+# entries below.
+###############################################################################
+#*.doc   diff=astextplain
+#*.DOC   diff=astextplain
+#*.docx  diff=astextplain
+#*.DOCX  diff=astextplain
+#*.dot   diff=astextplain
+#*.DOT   diff=astextplain
+#*.pdf   diff=astextplain
+#*.PDF   diff=astextplain
+#*.rtf   diff=astextplain
+#*.RTF   diff=astextplain
+
+================
+File: .gitignore
+================
+## Ignore Visual Studio temporary files, build results, and
+## files generated by popular Visual Studio add-ons.
+##
+## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Mono auto generated files
+mono_crash.*
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+# Uncomment if you have tasks that create the project's static files in wwwroot
+#wwwroot/
+
+# Visual Studio 2017 auto generated files
+Generated\ Files/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# Build Results of an ATL Project
+[Dd]ebugPS/
+[Rr]eleasePS/
+dlldata.c
+
+# Benchmark Results
+BenchmarkDotNet.Artifacts/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# StyleCop
+StyleCopReport.xml
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Chutzpah Test files
+_Chutzpah*
+
+# Visual C++ cache files
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Visual Studio Trace Files
+*.e2e
+
+# TFS 2012 Local Workspace
+$tf/
+
+# Guidance Automation Toolkit
+*.gpState
+
+# ReSharper is a .NET coding add-in
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# TeamCity is a build add-in
+_TeamCity*
+
+# DotCover is a Code Coverage Tool
+*.dotCover
+
+# AxoCover is a Code Coverage Tool
+.axoCover/*
+!.axoCover/settings.json
+
+# Coverlet is a free, cross platform Code Coverage Tool
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Visual Studio code coverage results
+*.coverage
+*.coveragexml
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# MightyMoose
+*.mm.*
+AutoTest.Net/
+
+# Web workbench (sass)
+.sass-cache/
+
+# Installshield output folder
+[Ee]xpress/
+
+# DocProject is a documentation generator add-in
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+
+# Click-Once directory
+publish/
+
+# Publish Web Output
+*.[Pp]ublish.xml
+*.azurePubxml
+# Note: Comment the next line if you want to checkin your web deploy settings,
+# but database connection strings (with potential passwords) will be unencrypted
+*.pubxml
+*.publishproj
+
+# Microsoft Azure Web App publish settings. Comment the next line if you want to
+# checkin your Azure Web App publish settings, but sensitive information contained
+# in these scripts will be unencrypted
+PublishScripts/
+
+# NuGet Packages
+*.nupkg
+# NuGet Symbol Packages
+*.snupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+# Uncomment if necessary however generally it will be regenerated when needed
+#!**/[Pp]ackages/repositories.config
+# NuGet v3's project.json files produces more ignorable files
+*.nuget.props
+*.nuget.targets
+
+# Microsoft Azure Build Output
+csx/
+*.build.csdef
+
+# Microsoft Azure Emulator
+ecf/
+rcf/
+
+# Windows Store app package directories and files
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.appxupload
+
+# Visual Studio cache files
+# files ending in .cache can be ignored
+*.[Cc]ache
+# but keep track of directories ending in .cache
+!?*.[Cc]ache/
+
+# Others
+ClientBin/
+~$*
+*~
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+orleans.codegen.cs
+
+# Including strong name files can present a security risk
+# (https://github.com/github/gitignore/pull/2483#issue-259490424)
+#*.snk
+
+# Since there are multiple workflows, uncomment next line to ignore bower_components
+# (https://github.com/github/gitignore/pull/1529#issuecomment-104372622)
+#bower_components/
+
+# RIA/Silverlight projects
+Generated_Code/
+
+# Backup & report files from converting an old project file
+# to a newer Visual Studio version. Backup files are not needed,
+# because we have git ;-)
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+ServiceFabricBackup/
+*.rptproj.bak
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# Business Intelligence projects
+*.rdl.data
+*.bim.layout
+*.bim_*.settings
+*.rptproj.rsuser
+*- [Bb]ackup.rdl
+*- [Bb]ackup ([0-9]).rdl
+*- [Bb]ackup ([0-9][0-9]).rdl
+
+# Microsoft Fakes
+FakesAssemblies/
+
+# GhostDoc plugin setting file
+*.GhostDoc.xml
+
+# Node.js Tools for Visual Studio
+.ntvs_analysis.dat
+node_modules/
+
+# Visual Studio 6 build log
+*.plg
+
+# Visual Studio 6 workspace options file
+*.opt
+
+# Visual Studio 6 auto-generated workspace file (contains which files were open etc.)
+*.vbw
+
+# Visual Studio LightSwitch build output
+**/*.HTMLClient/GeneratedArtifacts
+**/*.DesktopClient/GeneratedArtifacts
+**/*.DesktopClient/ModelManifest.xml
+**/*.Server/GeneratedArtifacts
+**/*.Server/ModelManifest.xml
+_Pvt_Extensions
+
+# Paket dependency manager
+.paket/paket.exe
+paket-files/
+
+# FAKE - F# Make
+.fake/
+
+# CodeRush personal settings
+.cr/personal
+
+# Python Tools for Visual Studio (PTVS)
+__pycache__/
+*.pyc
+
+# Cake - Uncomment if you are using it
+# tools/**
+# !tools/packages.config
+
+# Tabs Studio
+*.tss
+
+# Telerik's JustMock configuration file
+*.jmconfig
+
+# BizTalk build output
+*.btp.cs
+*.btm.cs
+*.odx.cs
+*.xsd.cs
+
+# OpenCover UI analysis results
+OpenCover/
+
+# Azure Stream Analytics local run output
+ASALocalRun/
+
+# MSBuild Binary and Structured Log
+*.binlog
+
+# NVidia Nsight GPU debugger configuration file
+*.nvuser
+
+# MFractors (Xamarin productivity tool) working folder
+.mfractor/
+
+# Local History for Visual Studio
+.localhistory/
+
+# BeatPulse healthcheck temp database
+healthchecksdb
+
+# Backup folder for Package Reference Convert tool in Visual Studio 2017
+MigrationBackup/
+
+# Ionide (cross platform F# VS Code tools) working folder
+.ionide/
+
+# Fody - auto-generated XML schema
+FodyWeavers.xsd
+
+================
+File: MegamorphLegFix.slnx
+================
+<Solution>
+  <Project Path="MegamorphLegFix/MegamorphLegFix.csproj" Id="bd614fa5-cfaf-4f37-8e32-a6e6169a1b65" />
+</Solution>
+
+================
+File: MegamorphLegFix/LegEqualizerCore.cs
+================
+extern alias MM;
+
+using MM::MegaMorph;
+using System;
+using System.Reflection;
+using System.Text;
+using UnityEngine;
+
+namespace MMorphFix
+{
+    public static class LegEqualizerCore
+    {
+        private static bool _isProcessing = false;
+
+        // Старый метод с одним аргументом, который может вызываться кэшем или старыми хуками
+        public static void ExecuteFix(CharacterCustomization cc)
+        {
+            ExecuteFix(cc, "АВТО_КОМПЕНСАЦИЯ");
+        }
+
+        public static void ExecuteFix(CharacterCustomization cc, string source)
+        {
+            if (cc == null || _isProcessing) return;
+            if (cc.bones == null || cc.bones.Length == 0) return;
+
+            _isProcessing = true;
+
+            try
+            {
+                bool isMainPlayer = cc.gameObject.name.IndexOf("Player", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (isMainPlayer)
+                    MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
+
+                // Передаем выполнение во внутренний изолированный метод.
+                // Это важнейший трюк: если внутри InnerExecute произойдет TypeLoadException 
+                // из-за отсутствия типов в DLL, этот внешний метод ExecuteFix НЕ РУХНЕТ, 
+                // а поймает ошибку в блоке catch и выведет её на радар и в консоль!
+                InnerExecute(cc, source, isMainPlayer);
+            }
+            catch (TypeLoadException tex)
+            {
+                // Формируем четкое описание ошибки загрузки типов для OnGUI радара
+                string briefError = $"[TypeLoad] Ошибка в {tex.TargetSite} -> Не найден тип: {tex.TypeName}";
+                MMorphFixPlugin.DebugMonitorText = briefError;
+
+                // Дублируем глубокий технический лог в консоль BepInEx (красным цветом)
+                if (MMorphFixPlugin.InstanceLogger != null)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine("=== [LegFix КРИТИЧЕСКИЙ СБОЙ ЗАГРУЗКИ ТИПОВ] ===");
+                    sb.AppendLine($"Метод вызова: {tex.TargetSite}");
+                    sb.AppendLine($"Имя проблемного типа: {tex.TypeName}");
+                    sb.AppendLine($"Сообщение: {tex.Message}");
+                    sb.AppendLine($"StackTrace:\n{tex.StackTrace}");
+                    sb.AppendLine("================================================");
+                    MMorphFixPlugin.InstanceLogger.LogError(sb.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                // Перехват всех остальных стандартных ошибок (NullReference и т.д.)
+                string briefError = $"[Ошибка] {ex.GetType().Name} в {ex.TargetSite} -> {ex.Message}";
+                MMorphFixPlugin.DebugMonitorText = briefError;
+
+                if (MMorphFixPlugin.InstanceLogger != null)
+                {
+                    MMorphFixPlugin.InstanceLogger.LogError($"[LegFix Ошибка Сустава]: {ex.GetType().Name} в {ex.TargetSite}. Подробности:\n{ex}");
+                }
+            }
+            finally
+            {
+                _isProcessing = false;
+            }
+        }
+
+        // Логическое ядро полностью изолировано внутри этого метода, чтобы спасти основной цикл от вылета
+        private static void InnerExecute(CharacterCustomization cc, string source, bool isMainPlayer)
+        {
+            // ПРЯМОЙ ДОСТУП: Пытаемся достать компонент Мегаморфа через жесткий тип
+            BepInExPlugin.MegaMorph megaMorphComp = cc.gameObject.GetComponent<BepInExPlugin.MegaMorph>();
+
+            bool leftOk = false;
+            bool rightOk = false;
+
+            foreach (Transform bone in cc.bones)
+            {
+                if (bone == null) continue;
+
+                if (bone.name.Equals("lThighBend", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyDirectOffsetsFix(bone, "lThighTwist", "lShin", "lFoot", "lThighBend_scale", megaMorphComp, isMainPlayer);
+                    leftOk = true;
+                }
+                else if (bone.name.Equals("rThighBend", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyDirectOffsetsFix(bone, "rThighTwist", "rShin", "rFoot", "rThighBend_scale", megaMorphComp, isMainPlayer);
+                    rightOk = true;
+                }
+            }
+
+            if (isMainPlayer && (leftOk || rightOk))
+            {
+                MMorphFixPlugin.FixExecutionCalls++;
+                MMorphFixPlugin.DebugMonitorText = "Каскадный щит осей активен. Наследование Unity выровнено.";
+            }
+        }
+
+        private static void ApplyDirectOffsetsFix(Transform thighBone, string twistName, string shinName, string footName, string thighKey, BepInExPlugin.MegaMorph megaMorph, bool isMainPlayer)
+        {
+            Transform shin = FindChildRecursive(thighBone, shinName);
+            Transform foot = FindChildRecursive(thighBone, footName);
+            if (shin == null || foot == null) return;
+
+            Transform twist = FindChildRecursive(thighBone, twistName);
+            if (twist != null) twist.localScale = Vector3.one;
+
+            // Читаем чистые пропорции слайдеров Мегаморфа (Источник Истины)
+            Vector3 configThigh = Vector3.one;
+            Vector3 configShin = Vector3.one;
+            Vector3 configFoot = Vector3.one;
+
+            if (megaMorph != null && megaMorph.offsets != null)
+            {
+                if (megaMorph.offsets.TryGetValue(thighKey, out var thighOffset)) configThigh = thighOffset.offset / 100f;
+                if (megaMorph.offsets.TryGetValue(shinName + "_scale", out var shinOffset)) configShin = shinOffset.offset / 100f;
+                if (megaMorph.offsets.TryGetValue(footName + "_scale", out var footOffset)) configFoot = footOffset.offset / 100f;
+            }
+
+            Vector3 liveThighScale = SanitizeVector(thighBone.localScale);
+
+            // --- ИСПРАВЛЕННЫЙ АНАТОМИЧЕСКИЙ РАСЧЕТ КОЛЕНА (Билд 6.0) ---
+            Quaternion shinRot = shin.localRotation;
+
+            // Узнаем, насколько сильно оси бедра отличаются друг от друга (ищем нелинейное сплющивание)
+            // configThigh.x — это эталонная толщина. Мы смотрим, насколько длина (Y) меньше толщины
+            float thighFlatteningRatio = liveThighScale.y / (Mathf.Abs(liveThighScale.x) > 0.001f ? liveThighScale.x : 1f);
+            if (Mathf.Abs(thighFlatteningRatio) < 0.01f) thighFlatteningRatio = 1f;
+
+            // Проецируем коэффициент сплющенности бедра на текущий поворот колена гизмо
+            // Если колено прямое, проекция равна 1. Если согнуто на 90 градусов, ось Y ложится на Z
+            Vector3 rotationProjectedCompensation = new Vector3(
+                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.right, Vector3.forward))),
+                Mathf.Lerp(1f, thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.up, Vector3.forward))),
+                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.forward, Vector3.forward)))
+            );
+
+            // Финальный масштаб голени: берем чистый слайдер из Мегаморфа (configShin)
+            // и умножаем ТОЛЬКО на компенсирующий коэффициент сгиба колена.
+            // Теперь при прямой ноге голень будет РОВНО равна твоему слайдеру (0.85, 0.85, 0.85)!
+            shin.localScale = new Vector3(
+                configShin.x * rotationProjectedCompensation.x,
+                configShin.y * rotationProjectedCompensation.y,
+                configShin.z * rotationProjectedCompensation.z
+            );
+
+            // --- ИСПРАВЛЕННЫЙ РАСЧЕТ ГОЛЕНОСТОПА ---
+            Quaternion footRot = foot.localRotation;
+            Vector3 currentCombinedParentScale = SanitizeVector(shin.lossyScale);
+            Vector3 pelvisScale = SanitizeVector(thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one);
+
+            // Выравниваем стопу строго по её ползунку из Мегаморфа, нейтрализуя кручение голени
+            foot.localScale = configFoot;
+
+            // --- ОТПРАВКА ДАННЫХ НА РАДАР ---
+            if (isMainPlayer)
+            {
+                string side = thighBone.name.StartsWith("l") ? "ЛЕВАЯ" : "ПРАВАЯ";
+                string telemetry =
+                    $"[{side} НОГА ИГРОКА] Слайдер_Бедра: {configThigh.ToString("F2")} | Слайдер_Голени: {configShin.ToString("F2")}\n" +
+                    $"            -> Угол колена гизмо: {shinRot.eulerAngles.ToString("F0")}°\n" +
+                    $"            -> Выставлен локальный scale голени: {shin.localScale.ToString("F2")} | Стопы: {foot.localScale.ToString("F2")}";
+
+                if (thighBone.name.StartsWith("l"))
+                    MMorphFixPlugin.LeftLegTelemetry = telemetry;
+                else
+                    MMorphFixPlugin.RightLegTelemetry = telemetry;
+            }
+        }
+
+        private static Vector3 SanitizeVector(Vector3 vector)
+        {
+            float x = (float.IsNaN(vector.x) || float.IsInfinity(vector.x) || Mathf.Abs(vector.x) < 0.01f) ? 1.0f : vector.x;
+            float y = (float.IsNaN(vector.y) || float.IsInfinity(vector.y) || Mathf.Abs(vector.y) < 0.01f) ? 1.0f : vector.y;
+            float z = (float.IsNaN(vector.z) || float.IsInfinity(vector.z) || Mathf.Abs(vector.z) < 0.01f) ? 1.0f : vector.z;
+            return new Vector3(x, y, z);
+        }
+
+        private static Transform FindChildRecursive(Transform parent, string name)
+        {
+            if (parent.name.Equals(name, StringComparison.OrdinalIgnoreCase)) return parent;
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform result = FindChildRecursive(parent.GetChild(i), name);
+                if (result != null) return result;
+            }
+            return null;
+        }
+    }
+}
+
+================
+File: MegamorphLegFix/MegamorphLegFix.csproj
+================
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{BD614FA5-CFAF-4F37-8E32-A6E6169A1B65}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MMorphFix</RootNamespace>
+    <AssemblyName>MMorphFix</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\BepInEx\core\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\BepInEx\core\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="MegaMorph">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\BepInEx\plugins\MegaMorph.dll</HintPath>
+      <Aliases>MM</Aliases>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.SharedInternalsModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.SharedInternalsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="LegEqualizerCore.cs" />
+    <Compile Include="MegamorphLegFixPlugin.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
+
+================
+File: MegamorphLegFix/MegamorphLegFixPlugin.cs
+================
+using System;
+using System.Reflection;
+using BepInEx;
+using BepInEx.Logging;
+using HarmonyLib;
+using UnityEngine;
+
+namespace MMorphFix
+{
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.6.0")]
+    public class MMorphFixPlugin : BaseUnityPlugin
+    {
+        public static string DebugMonitorText = "Инициализация...";
+        public static int TotalFramesCount = 0;
+        public static int FixExecutionCalls = 0;
+        public static string LastFoundCharacter = "Никого";
+        public static string LeftLegTelemetry = "L: Ожидание суккуба...";
+        public static string RightLegTelemetry = "R: Ожидание суккуба...";
+
+        // Глобальная ссылка на логгер для вывода в консоль BepInEx
+        public static ManualLogSource InstanceLogger;
+
+        private void Awake()
+        {
+            InstanceLogger = Logger;
+            InstanceLogger.LogInfo("=== [LegFix] Запуск системы глубокого мониторинга скелета ===");
+
+            var harmony = new Harmony("com.lorifel007.megamorphlegfix");
+
+            // Хук 1: Патч редактора Мегаморфа (DoUpdate)
+            Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph")
+                                 ?? AccessTools.TypeByName("MegaMorph.MegaMorph")
+                                 ?? AccessTools.TypeByName("MegaMorph");
+            if (megaMorphType != null)
+            {
+                var original = AccessTools.Method(megaMorphType, "DoUpdate");
+                var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
+                if (original != null && postfix != null)
+                {
+                    harmony.Patch(original, null, new HarmonyMethod(postfix));
+                    InstanceLogger.LogInfo("[LegFix] Хук DoUpdate Мегаморфа успешно установлен.");
+                }
+            }
+
+            // Хук 2: Патч гизмо-редактора FreePose
+            Type gizmoType = AccessTools.TypeByName("TransformGizmo")
+                             ?? AccessTools.TypeByName("AdvancedFreePoseMode.TransformGizmo");
+            if (gizmoType != null)
+            {
+                var originalGizmo = AccessTools.Method(gizmoType, "DoUpdate");
+                var postfixGizmo = AccessTools.Method(typeof(FreePoseGizmoPatch), "Postfix");
+                if (originalGizmo != null && postfixGizmo != null)
+                {
+                    harmony.Patch(originalGizmo, null, new HarmonyMethod(postfixGizmo));
+                    InstanceLogger.LogInfo("[LegFix] Хук FreePose Gizmo успешно установлен.");
+                }
+            }
+
+            // Хук 3: Сквозной контроль для обычного мира через LateUpdate
+            try
+            {
+                harmony.PatchAll();
+                DebugMonitorText = "Все хуки установлены. Ожидание фазы обсчета...";
+            }
+            catch (Exception ex)
+            {
+                InstanceLogger.LogError($"[LegFix] Критическая ошибка PatchAll: {ex}");
+                DebugMonitorText = $"Ошибка Harmony PatchAll: {ex.Message}";
+            }
+        }
+
+        private void Update()
+        {
+            TotalFramesCount++;
+        }
+
+        private void OnGUI()
+        {
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.9.1 Log+)");
+            UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
+            {
+                fontSize = 11,
+                fontStyle = UnityEngine.FontStyle.Bold,
+                alignment = UnityEngine.TextAnchor.UpperLeft
+            };
+            labelStyle.normal.textColor = UnityEngine.Color.green;
+
+            string systemStatus =
+                $"[СИСТЕМА] Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
+                $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter}\n" +
+                $"[СТАТУС] {DebugMonitorText}\n" +
+                $"------------------------------------------------------------------------------------------------------\n" +
+                $"{LeftLegTelemetry}\n" +
+                $"------------------------------------------------------------------------------------------------------\n" +
+                $"{RightLegTelemetry}";
+
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 630, 180), systemStatus, labelStyle);
+        }
+    }
+
+    public static class MegamorphDoUpdatePatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            if (__instance == null) return;
+            CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
+            if (cc != null) LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ");
+        }
+    }
+
+    public static class FreePoseGizmoPatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГИЗМО");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CharacterCustomization), "LateUpdate")]
+    public static class GameLateUpdatePatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(CharacterCustomization __instance)
+        {
+            if (__instance == null) return;
+
+            bool isFreePoseActive = Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.isActiveAndEnabled;
+            if (!isFreePoseActive)
+            {
+                LegEqualizerCore.ExecuteFix(__instance, "LATEUPDATE");
+            }
+        }
+    }
+}
+
+================
+File: MegamorphLegFix/Properties/AssemblyInfo.cs
+================
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// Общие сведения об этой сборке предоставляются следующим набором
+// набора атрибутов. Измените значения этих атрибутов для изменения сведений,
+// связанные со сборкой.
+[assembly: AssemblyTitle("MegamorphLegFix")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("MegamorphLegFix")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+// Установка значения False для параметра ComVisible делает типы в этой сборке невидимыми
+// для компонентов COM. Если необходимо обратиться к типу в этой сборке через
+// COM, задайте атрибуту ComVisible значение TRUE для этого типа.
+[assembly: ComVisible(false)]
+
+// Следующий GUID служит для идентификации библиотеки типов, если этот проект будет видимым для COM
+[assembly: Guid("bd614fa5-cfaf-4f37-8e32-a6e6169a1b65")]
+
+// Сведения о версии сборки состоят из указанных ниже четырех значений:
+//
+//      Основной номер версии
+//      Дополнительный номер версии
+//      Номер сборки
+//      Редакция
+//
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+
+================
+File: repomix-output.xml
+================
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.gitattributes
+.gitignore
+MegamorphLegFix.slnx
+MegamorphLegFix/LegEqualizerCore.cs
+MegamorphLegFix/MegamorphLegFix.csproj
+MegamorphLegFix/MegamorphLegFixPlugin.cs
+MegamorphLegFix/Properties/AssemblyInfo.cs
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path=".gitattributes">
+###############################################################################
+# Set default behavior to automatically normalize line endings.
+###############################################################################
+* text=auto
+
+###############################################################################
+# Set default behavior for command prompt diff.
+#
+# This is need for earlier builds of msysgit that does not have it on by
+# default for csharp files.
+# Note: This is only used by command line
+###############################################################################
+#*.cs     diff=csharp
+
+###############################################################################
+# Set the merge driver for project and solution files
+#
+# Merging from the command prompt will add diff markers to the files if there
+# are conflicts (Merging from VS is not affected by the settings below, in VS
+# the diff markers are never inserted). Diff markers may cause the following 
+# file extensions to fail to load in VS. An alternative would be to treat
+# these files as binary and thus will always conflict and require user
+# intervention with every merge. To do so, just uncomment the entries below
+###############################################################################
+#*.sln       merge=binary
+#*.csproj    merge=binary
+#*.vbproj    merge=binary
+#*.vcxproj   merge=binary
+#*.vcproj    merge=binary
+#*.dbproj    merge=binary
+#*.fsproj    merge=binary
+#*.lsproj    merge=binary
+#*.wixproj   merge=binary
+#*.modelproj merge=binary
+#*.sqlproj   merge=binary
+#*.wwaproj   merge=binary
+
+###############################################################################
+# behavior for image files
+#
+# image files are treated as binary by default.
+###############################################################################
+#*.jpg   binary
+#*.png   binary
+#*.gif   binary
+
+###############################################################################
+# diff behavior for common document formats
+# 
+# Convert binary document formats to text before diffing them. This feature
+# is only available from the command line. Turn it on by uncommenting the 
+# entries below.
+###############################################################################
+#*.doc   diff=astextplain
+#*.DOC   diff=astextplain
+#*.docx  diff=astextplain
+#*.DOCX  diff=astextplain
+#*.dot   diff=astextplain
+#*.DOT   diff=astextplain
+#*.pdf   diff=astextplain
+#*.PDF   diff=astextplain
+#*.rtf   diff=astextplain
+#*.RTF   diff=astextplain
+</file>
+
+<file path=".gitignore">
+## Ignore Visual Studio temporary files, build results, and
+## files generated by popular Visual Studio add-ons.
+##
+## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
+
+# User-specific files
+*.rsuser
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# User-specific files (MonoDevelop/Xamarin Studio)
+*.userprefs
+
+# Mono auto generated files
+mono_crash.*
+
+# Build results
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Ww][Ii][Nn]32/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Oo]ut/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio 2015/2017 cache/options directory
+.vs/
+# Uncomment if you have tasks that create the project's static files in wwwroot
+#wwwroot/
+
+# Visual Studio 2017 auto generated files
+Generated\ Files/
+
+# MSTest test Results
+[Tt]est[Rr]esult*/
+[Bb]uild[Ll]og.*
+
+# NUnit
+*.VisualState.xml
+TestResult.xml
+nunit-*.xml
+
+# Build Results of an ATL Project
+[Dd]ebugPS/
+[Rr]eleasePS/
+dlldata.c
+
+# Benchmark Results
+BenchmarkDotNet.Artifacts/
+
+# .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# ASP.NET Scaffolding
+ScaffoldingReadMe.txt
+
+# StyleCop
+StyleCopReport.xml
+
+# Files built by Visual Studio
+*_i.c
+*_p.c
+*_h.h
+*.ilk
+*.meta
+*.obj
+*.iobj
+*.pch
+*.pdb
+*.ipdb
+*.pgc
+*.pgd
+*.rsp
+*.sbr
+*.tlb
+*.tli
+*.tlh
+*.tmp
+*.tmp_proj
+*_wpftmp.csproj
+*.log
+*.vspscc
+*.vssscc
+.builds
+*.pidb
+*.svclog
+*.scc
+
+# Chutzpah Test files
+_Chutzpah*
+
+# Visual C++ cache files
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+*.sap
+
+# Visual Studio Trace Files
+*.e2e
+
+# TFS 2012 Local Workspace
+$tf/
+
+# Guidance Automation Toolkit
+*.gpState
+
+# ReSharper is a .NET coding add-in
+_ReSharper*/
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# TeamCity is a build add-in
+_TeamCity*
+
+# DotCover is a Code Coverage Tool
+*.dotCover
+
+# AxoCover is a Code Coverage Tool
+.axoCover/*
+!.axoCover/settings.json
+
+# Coverlet is a free, cross platform Code Coverage Tool
+coverage*.json
+coverage*.xml
+coverage*.info
+
+# Visual Studio code coverage results
+*.coverage
+*.coveragexml
+
+# NCrunch
+_NCrunch_*
+.*crunch*.local.xml
+nCrunchTemp_*
+
+# MightyMoose
+*.mm.*
+AutoTest.Net/
+
+# Web workbench (sass)
+.sass-cache/
+
+# Installshield output folder
+[Ee]xpress/
+
+# DocProject is a documentation generator add-in
+DocProject/buildhelp/
+DocProject/Help/*.HxT
+DocProject/Help/*.HxC
+DocProject/Help/*.hhc
+DocProject/Help/*.hhk
+DocProject/Help/*.hhp
+DocProject/Help/Html2
+DocProject/Help/html
+
+# Click-Once directory
+publish/
+
+# Publish Web Output
+*.[Pp]ublish.xml
+*.azurePubxml
+# Note: Comment the next line if you want to checkin your web deploy settings,
+# but database connection strings (with potential passwords) will be unencrypted
+*.pubxml
+*.publishproj
+
+# Microsoft Azure Web App publish settings. Comment the next line if you want to
+# checkin your Azure Web App publish settings, but sensitive information contained
+# in these scripts will be unencrypted
+PublishScripts/
+
+# NuGet Packages
+*.nupkg
+# NuGet Symbol Packages
+*.snupkg
+# The packages folder can be ignored because of Package Restore
+**/[Pp]ackages/*
+# except build/, which is used as an MSBuild target.
+!**/[Pp]ackages/build/
+# Uncomment if necessary however generally it will be regenerated when needed
+#!**/[Pp]ackages/repositories.config
+# NuGet v3's project.json files produces more ignorable files
+*.nuget.props
+*.nuget.targets
+
+# Microsoft Azure Build Output
+csx/
+*.build.csdef
+
+# Microsoft Azure Emulator
+ecf/
+rcf/
+
+# Windows Store app package directories and files
+AppPackages/
+BundleArtifacts/
+Package.StoreAssociation.xml
+_pkginfo.txt
+*.appx
+*.appxbundle
+*.appxupload
+
+# Visual Studio cache files
+# files ending in .cache can be ignored
+*.[Cc]ache
+# but keep track of directories ending in .cache
+!?*.[Cc]ache/
+
+# Others
+ClientBin/
+~$*
+*~
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+orleans.codegen.cs
+
+# Including strong name files can present a security risk
+# (https://github.com/github/gitignore/pull/2483#issue-259490424)
+#*.snk
+
+# Since there are multiple workflows, uncomment next line to ignore bower_components
+# (https://github.com/github/gitignore/pull/1529#issuecomment-104372622)
+#bower_components/
+
+# RIA/Silverlight projects
+Generated_Code/
+
+# Backup & report files from converting an old project file
+# to a newer Visual Studio version. Backup files are not needed,
+# because we have git ;-)
+_UpgradeReport_Files/
+Backup*/
+UpgradeLog*.XML
+UpgradeLog*.htm
+ServiceFabricBackup/
+*.rptproj.bak
+
+# SQL Server files
+*.mdf
+*.ldf
+*.ndf
+
+# Business Intelligence projects
+*.rdl.data
+*.bim.layout
+*.bim_*.settings
+*.rptproj.rsuser
+*- [Bb]ackup.rdl
+*- [Bb]ackup ([0-9]).rdl
+*- [Bb]ackup ([0-9][0-9]).rdl
+
+# Microsoft Fakes
+FakesAssemblies/
+
+# GhostDoc plugin setting file
+*.GhostDoc.xml
+
+# Node.js Tools for Visual Studio
+.ntvs_analysis.dat
+node_modules/
+
+# Visual Studio 6 build log
+*.plg
+
+# Visual Studio 6 workspace options file
+*.opt
+
+# Visual Studio 6 auto-generated workspace file (contains which files were open etc.)
+*.vbw
+
+# Visual Studio LightSwitch build output
+**/*.HTMLClient/GeneratedArtifacts
+**/*.DesktopClient/GeneratedArtifacts
+**/*.DesktopClient/ModelManifest.xml
+**/*.Server/GeneratedArtifacts
+**/*.Server/ModelManifest.xml
+_Pvt_Extensions
+
+# Paket dependency manager
+.paket/paket.exe
+paket-files/
+
+# FAKE - F# Make
+.fake/
+
+# CodeRush personal settings
+.cr/personal
+
+# Python Tools for Visual Studio (PTVS)
+__pycache__/
+*.pyc
+
+# Cake - Uncomment if you are using it
+# tools/**
+# !tools/packages.config
+
+# Tabs Studio
+*.tss
+
+# Telerik's JustMock configuration file
+*.jmconfig
+
+# BizTalk build output
+*.btp.cs
+*.btm.cs
+*.odx.cs
+*.xsd.cs
+
+# OpenCover UI analysis results
+OpenCover/
+
+# Azure Stream Analytics local run output
+ASALocalRun/
+
+# MSBuild Binary and Structured Log
+*.binlog
+
+# NVidia Nsight GPU debugger configuration file
+*.nvuser
+
+# MFractors (Xamarin productivity tool) working folder
+.mfractor/
+
+# Local History for Visual Studio
+.localhistory/
+
+# BeatPulse healthcheck temp database
+healthchecksdb
+
+# Backup folder for Package Reference Convert tool in Visual Studio 2017
+MigrationBackup/
+
+# Ionide (cross platform F# VS Code tools) working folder
+.ionide/
+
+# Fody - auto-generated XML schema
+FodyWeavers.xsd
+</file>
+
+<file path="MegamorphLegFix.slnx">
+<Solution>
+  <Project Path="MegamorphLegFix/MegamorphLegFix.csproj" Id="bd614fa5-cfaf-4f37-8e32-a6e6169a1b65" />
+</Solution>
+</file>
+
+<file path="MegamorphLegFix/LegEqualizerCore.cs">
+extern alias MM;
+
+using MM::MegaMorph;
+using System;
+using System.Reflection;
+using System.Text;
+using UnityEngine;
+
+namespace MMorphFix
+{
+    public static class LegEqualizerCore
+    {
+        private static bool _isProcessing = false;
+
+        // Старый метод с одним аргументом, который может вызываться кэшем или старыми хуками
+        public static void ExecuteFix(CharacterCustomization cc)
+        {
+            ExecuteFix(cc, "АВТО_КОМПЕНСАЦИЯ");
+        }
+
+        public static void ExecuteFix(CharacterCustomization cc, string source)
+        {
+            if (cc == null || _isProcessing) return;
+            if (cc.bones == null || cc.bones.Length == 0) return;
+
+            _isProcessing = true;
+
+            try
+            {
+                bool isMainPlayer = cc.gameObject.name.IndexOf("Player", StringComparison.OrdinalIgnoreCase) >= 0;
+
+                if (isMainPlayer)
+                    MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
+
+                // Передаем выполнение во внутренний изолированный метод.
+                // Это важнейший трюк: если внутри InnerExecute произойдет TypeLoadException 
+                // из-за отсутствия типов в DLL, этот внешний метод ExecuteFix НЕ РУХНЕТ, 
+                // а поймает ошибку в блоке catch и выведет её на радар и в консоль!
+                InnerExecute(cc, source, isMainPlayer);
+            }
+            catch (TypeLoadException tex)
+            {
+                // Формируем четкое описание ошибки загрузки типов для OnGUI радара
+                string briefError = $"[TypeLoad] Ошибка в {tex.TargetSite} -> Не найден тип: {tex.TypeName}";
+                MMorphFixPlugin.DebugMonitorText = briefError;
+
+                // Дублируем глубокий технический лог в консоль BepInEx (красным цветом)
+                if (MMorphFixPlugin.InstanceLogger != null)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    sb.AppendLine("=== [LegFix КРИТИЧЕСКИЙ СБОЙ ЗАГРУЗКИ ТИПОВ] ===");
+                    sb.AppendLine($"Метод вызова: {tex.TargetSite}");
+                    sb.AppendLine($"Имя проблемного типа: {tex.TypeName}");
+                    sb.AppendLine($"Сообщение: {tex.Message}");
+                    sb.AppendLine($"StackTrace:\n{tex.StackTrace}");
+                    sb.AppendLine("================================================");
+                    MMorphFixPlugin.InstanceLogger.LogError(sb.ToString());
+                }
+            }
+            catch (Exception ex)
+            {
+                // Перехват всех остальных стандартных ошибок (NullReference и т.д.)
+                string briefError = $"[Ошибка] {ex.GetType().Name} в {ex.TargetSite} -> {ex.Message}";
+                MMorphFixPlugin.DebugMonitorText = briefError;
+
+                if (MMorphFixPlugin.InstanceLogger != null)
+                {
+                    MMorphFixPlugin.InstanceLogger.LogError($"[LegFix Ошибка Сустава]: {ex.GetType().Name} в {ex.TargetSite}. Подробности:\n{ex}");
+                }
+            }
+            finally
+            {
+                _isProcessing = false;
+            }
+        }
+
+        // Логическое ядро полностью изолировано внутри этого метода, чтобы спасти основной цикл от вылета
+        private static void InnerExecute(CharacterCustomization cc, string source, bool isMainPlayer)
+        {
+            // ПРЯМОЙ ДОСТУП: Пытаемся достать компонент Мегаморфа через жесткий тип
+            BepInExPlugin.MegaMorph megaMorphComp = cc.gameObject.GetComponent<BepInExPlugin.MegaMorph>();
+
+            bool leftOk = false;
+            bool rightOk = false;
+
+            foreach (Transform bone in cc.bones)
+            {
+                if (bone == null) continue;
+
+                if (bone.name.Equals("lThighBend", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyDirectOffsetsFix(bone, "lThighTwist", "lShin", "lFoot", "lThighBend_scale", megaMorphComp, isMainPlayer);
+                    leftOk = true;
+                }
+                else if (bone.name.Equals("rThighBend", StringComparison.OrdinalIgnoreCase))
+                {
+                    ApplyDirectOffsetsFix(bone, "rThighTwist", "rShin", "rFoot", "rThighBend_scale", megaMorphComp, isMainPlayer);
+                    rightOk = true;
+                }
+            }
+
+            if (isMainPlayer && (leftOk || rightOk))
+            {
+                MMorphFixPlugin.FixExecutionCalls++;
+                MMorphFixPlugin.DebugMonitorText = "Каскадный щит осей активен. Наследование Unity выровнено.";
+            }
+        }
+
+        private static void ApplyDirectOffsetsFix(Transform thighBone, string twistName, string shinName, string footName, string thighKey, BepInExPlugin.MegaMorph megaMorph, bool isMainPlayer)
+        {
+            Transform shin = FindChildRecursive(thighBone, shinName);
+            Transform foot = FindChildRecursive(thighBone, footName);
+            if (shin == null || foot == null) return;
+
+            Transform twist = FindChildRecursive(thighBone, twistName);
+            if (twist != null) twist.localScale = Vector3.one;
+
+            // Читаем чистые пропорции слайдеров Мегаморфа (Источник Истины)
+            Vector3 configThigh = Vector3.one;
+            Vector3 configShin = Vector3.one;
+            Vector3 configFoot = Vector3.one;
+
+            if (megaMorph != null && megaMorph.offsets != null)
+            {
+                if (megaMorph.offsets.TryGetValue(thighKey, out var thighOffset)) configThigh = thighOffset.offset / 100f;
+                if (megaMorph.offsets.TryGetValue(shinName + "_scale", out var shinOffset)) configShin = shinOffset.offset / 100f;
+                if (megaMorph.offsets.TryGetValue(footName + "_scale", out var footOffset)) configFoot = footOffset.offset / 100f;
+            }
+
+            Vector3 liveThighScale = SanitizeVector(thighBone.localScale);
+
+            // --- ИСПРАВЛЕННЫЙ АНАТОМИЧЕСКИЙ РАСЧЕТ КОЛЕНА (Билд 6.0) ---
+            Quaternion shinRot = shin.localRotation;
+
+            // Узнаем, насколько сильно оси бедра отличаются друг от друга (ищем нелинейное сплющивание)
+            // configThigh.x — это эталонная толщина. Мы смотрим, насколько длина (Y) меньше толщины
+            float thighFlatteningRatio = liveThighScale.y / (Mathf.Abs(liveThighScale.x) > 0.001f ? liveThighScale.x : 1f);
+            if (Mathf.Abs(thighFlatteningRatio) < 0.01f) thighFlatteningRatio = 1f;
+
+            // Проецируем коэффициент сплющенности бедра на текущий поворот колена гизмо
+            // Если колено прямое, проекция равна 1. Если согнуто на 90 градусов, ось Y ложится на Z
+            Vector3 rotationProjectedCompensation = new Vector3(
+                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.right, Vector3.forward))),
+                Mathf.Lerp(1f, thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.up, Vector3.forward))),
+                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.forward, Vector3.forward)))
+            );
+
+            // Финальный масштаб голени: берем чистый слайдер из Мегаморфа (configShin)
+            // и умножаем ТОЛЬКО на компенсирующий коэффициент сгиба колена.
+            // Теперь при прямой ноге голень будет РОВНО равна твоему слайдеру (0.85, 0.85, 0.85)!
+            shin.localScale = new Vector3(
+                configShin.x * rotationProjectedCompensation.x,
+                configShin.y * rotationProjectedCompensation.y,
+                configShin.z * rotationProjectedCompensation.z
+            );
+
+            // --- ИСПРАВЛЕННЫЙ РАСЧЕТ ГОЛЕНОСТОПА ---
+            Quaternion footRot = foot.localRotation;
+            Vector3 currentCombinedParentScale = SanitizeVector(shin.lossyScale);
+            Vector3 pelvisScale = SanitizeVector(thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one);
+
+            // Выравниваем стопу строго по её ползунку из Мегаморфа, нейтрализуя кручение голени
+            foot.localScale = configFoot;
+
+            // --- ОТПРАВКА ДАННЫХ НА РАДАР ---
+            if (isMainPlayer)
+            {
+                string side = thighBone.name.StartsWith("l") ? "ЛЕВАЯ" : "ПРАВАЯ";
+                string telemetry =
+                    $"[{side} НОГА ИГРОКА] Слайдер_Бедра: {configThigh.ToString("F2")} | Слайдер_Голени: {configShin.ToString("F2")}\n" +
+                    $"            -> Угол колена гизмо: {shinRot.eulerAngles.ToString("F0")}°\n" +
+                    $"            -> Выставлен локальный scale голени: {shin.localScale.ToString("F2")} | Стопы: {foot.localScale.ToString("F2")}";
+
+                if (thighBone.name.StartsWith("l"))
+                    MMorphFixPlugin.LeftLegTelemetry = telemetry;
+                else
+                    MMorphFixPlugin.RightLegTelemetry = telemetry;
+            }
+        }
+
+        private static Vector3 SanitizeVector(Vector3 vector)
+        {
+            float x = (float.IsNaN(vector.x) || float.IsInfinity(vector.x) || Mathf.Abs(vector.x) < 0.01f) ? 1.0f : vector.x;
+            float y = (float.IsNaN(vector.y) || float.IsInfinity(vector.y) || Mathf.Abs(vector.y) < 0.01f) ? 1.0f : vector.y;
+            float z = (float.IsNaN(vector.z) || float.IsInfinity(vector.z) || Mathf.Abs(vector.z) < 0.01f) ? 1.0f : vector.z;
+            return new Vector3(x, y, z);
+        }
+
+        private static Transform FindChildRecursive(Transform parent, string name)
+        {
+            if (parent.name.Equals(name, StringComparison.OrdinalIgnoreCase)) return parent;
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform result = FindChildRecursive(parent.GetChild(i), name);
+                if (result != null) return result;
+            }
+            return null;
+        }
+    }
+}
+</file>
+
+<file path="MegamorphLegFix/MegamorphLegFix.csproj">
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{BD614FA5-CFAF-4F37-8E32-A6E6169A1B65}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>MMorphFix</RootNamespace>
+    <AssemblyName>MMorphFix</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+    <TargetFrameworkProfile />
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\BepInEx\core\0Harmony.dll</HintPath>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\Assembly-CSharp.dll</HintPath>
+    </Reference>
+    <Reference Include="BepInEx">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\BepInEx\core\BepInEx.dll</HintPath>
+    </Reference>
+    <Reference Include="MegaMorph">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\BepInEx\plugins\MegaMorph.dll</HintPath>
+      <Aliases>MM</Aliases>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xml.Linq" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Net.Http" />
+    <Reference Include="System.Xml" />
+    <Reference Include="UnityEngine">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.AnimationModule">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.AnimationModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.SharedInternalsModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.SharedInternalsModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.TextRenderingModule, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Steam\steamapps\common\She Will Punish Them\She Will Punish Them_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="LegEqualizerCore.cs" />
+    <Compile Include="MegamorphLegFixPlugin.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
+</file>
+
+<file path="MegamorphLegFix/MegamorphLegFixPlugin.cs">
+using System;
+using System.Reflection;
+using BepInEx;
+using BepInEx.Logging;
+using HarmonyLib;
+using UnityEngine;
+
+namespace MMorphFix
+{
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.6.0")]
+    public class MMorphFixPlugin : BaseUnityPlugin
+    {
+        public static string DebugMonitorText = "Инициализация...";
+        public static int TotalFramesCount = 0;
+        public static int FixExecutionCalls = 0;
+        public static string LastFoundCharacter = "Никого";
+        public static string LeftLegTelemetry = "L: Ожидание суккуба...";
+        public static string RightLegTelemetry = "R: Ожидание суккуба...";
+
+        // Глобальная ссылка на логгер для вывода в консоль BepInEx
+        public static ManualLogSource InstanceLogger;
+
+        private void Awake()
+        {
+            InstanceLogger = Logger;
+            InstanceLogger.LogInfo("=== [LegFix] Запуск системы глубокого мониторинга скелета ===");
+
+            var harmony = new Harmony("com.lorifel007.megamorphlegfix");
+
+            // Хук 1: Патч редактора Мегаморфа (DoUpdate)
+            Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph")
+                                 ?? AccessTools.TypeByName("MegaMorph.MegaMorph")
+                                 ?? AccessTools.TypeByName("MegaMorph");
+            if (megaMorphType != null)
+            {
+                var original = AccessTools.Method(megaMorphType, "DoUpdate");
+                var postfix = AccessTools.Method(typeof(MegamorphDoUpdatePatch), "Postfix");
+                if (original != null && postfix != null)
+                {
+                    harmony.Patch(original, null, new HarmonyMethod(postfix));
+                    InstanceLogger.LogInfo("[LegFix] Хук DoUpdate Мегаморфа успешно установлен.");
+                }
+            }
+
+            // Хук 2: Патч гизмо-редактора FreePose
+            Type gizmoType = AccessTools.TypeByName("TransformGizmo")
+                             ?? AccessTools.TypeByName("AdvancedFreePoseMode.TransformGizmo");
+            if (gizmoType != null)
+            {
+                var originalGizmo = AccessTools.Method(gizmoType, "DoUpdate");
+                var postfixGizmo = AccessTools.Method(typeof(FreePoseGizmoPatch), "Postfix");
+                if (originalGizmo != null && postfixGizmo != null)
+                {
+                    harmony.Patch(originalGizmo, null, new HarmonyMethod(postfixGizmo));
+                    InstanceLogger.LogInfo("[LegFix] Хук FreePose Gizmo успешно установлен.");
+                }
+            }
+
+            // Хук 3: Сквозной контроль для обычного мира через LateUpdate
+            try
+            {
+                harmony.PatchAll();
+                DebugMonitorText = "Все хуки установлены. Ожидание фазы обсчета...";
+            }
+            catch (Exception ex)
+            {
+                InstanceLogger.LogError($"[LegFix] Критическая ошибка PatchAll: {ex}");
+                DebugMonitorText = $"Ошибка Harmony PatchAll: {ex.Message}";
+            }
+        }
+
+        private void Update()
+        {
+            TotalFramesCount++;
+        }
+
+        private void OnGUI()
+        {
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.9.1 Log+)");
+            UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
+            {
+                fontSize = 11,
+                fontStyle = UnityEngine.FontStyle.Bold,
+                alignment = UnityEngine.TextAnchor.UpperLeft
+            };
+            labelStyle.normal.textColor = UnityEngine.Color.green;
+
+            string systemStatus =
+                $"[СИСТЕМА] Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
+                $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter}\n" +
+                $"[СТАТУС] {DebugMonitorText}\n" +
+                $"------------------------------------------------------------------------------------------------------\n" +
+                $"{LeftLegTelemetry}\n" +
+                $"------------------------------------------------------------------------------------------------------\n" +
+                $"{RightLegTelemetry}";
+
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 630, 180), systemStatus, labelStyle);
+        }
+    }
+
+    public static class MegamorphDoUpdatePatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            if (__instance == null) return;
+            CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
+            if (cc != null) LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ");
+        }
+    }
+
+    public static class FreePoseGizmoPatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГИЗМО");
+            }
+        }
+    }
+
+    [HarmonyPatch(typeof(CharacterCustomization), "LateUpdate")]
+    public static class GameLateUpdatePatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(CharacterCustomization __instance)
+        {
+            if (__instance == null) return;
+
+            bool isFreePoseActive = Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.isActiveAndEnabled;
+            if (!isFreePoseActive)
+            {
+                LegEqualizerCore.ExecuteFix(__instance, "LATEUPDATE");
+            }
+        }
+    }
+}
+</file>
+
+<file path="MegamorphLegFix/Properties/AssemblyInfo.cs">
+using System.Reflection;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+
+// Общие сведения об этой сборке предоставляются следующим набором
+// набора атрибутов. Измените значения этих атрибутов для изменения сведений,
+// связанные со сборкой.
+[assembly: AssemblyTitle("MegamorphLegFix")]
+[assembly: AssemblyDescription("")]
+[assembly: AssemblyConfiguration("")]
+[assembly: AssemblyCompany("")]
+[assembly: AssemblyProduct("MegamorphLegFix")]
+[assembly: AssemblyCopyright("Copyright ©  2026")]
+[assembly: AssemblyTrademark("")]
+[assembly: AssemblyCulture("")]
+
+// Установка значения False для параметра ComVisible делает типы в этой сборке невидимыми
+// для компонентов COM. Если необходимо обратиться к типу в этой сборке через
+// COM, задайте атрибуту ComVisible значение TRUE для этого типа.
+[assembly: ComVisible(false)]
+
+// Следующий GUID служит для идентификации библиотеки типов, если этот проект будет видимым для COM
+[assembly: Guid("bd614fa5-cfaf-4f37-8e32-a6e6169a1b65")]
+
+// Сведения о версии сборки состоят из указанных ниже четырех значений:
+//
+//      Основной номер версии
+//      Дополнительный номер версии
+//      Номер сборки
+//      Редакция
+//
+[assembly: AssemblyVersion("1.0.0.0")]
+[assembly: AssemblyFileVersion("1.0.0.0")]
+</file>
+
+</files>
+
+================
+File: repomix.config.json
+================
+{
+  "$schema": "https://repomix.com/schemas/latest/schema.json",
+  "input": {
+    "maxFileSize": 52428800
+  },
+  "output": {
+    "filePath": "repomix-output.txt",
+    "style": "plain",
+    "filePathStyle": "target-relative",
+    "parsableStyle": false,
+    "fileSummary": true,
+    "directoryStructure": true,
+    "files": true,
+    "removeComments": false,
+    "removeEmptyLines": false,
+    "compress": false,
+    "topFilesLength": 5,
+    "showLineNumbers": false,
+    "truncateBase64": false,
+    "copyToClipboard": false,
+    "includeFullDirectoryStructure": false,
+    "tokenCountTree": false,
+    "git": {
+      "sortByChanges": true,
+      "sortByChangesMaxCommits": 100,
+      "includeDiffs": false,
+      "includeLogs": false,
+      "includeLogsCount": 50
+    }
+  },
+  "include": [],
+  "ignore": {
+    "useGitignore": true,
+    "useDotIgnore": true,
+    "useDefaultPatterns": true,
+    "customPatterns": []
+  },
+  "security": {
+    "enableSecurityCheck": true
+  },
+  "tokenCount": {
+    "encoding": "o200k_base"
+  }
+}
+
+
+
+
+
+================================================================
+End of Codebase
+================================================================

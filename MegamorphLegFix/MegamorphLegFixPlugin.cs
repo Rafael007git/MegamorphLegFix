@@ -76,7 +76,9 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.9.1 Log+)");
+            // Увеличили высоту прямоугольника Box с 220 до 320, чтобы вместить расширенную телеметрию
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 320), "Leg Fix REALTIME DIAGNOSTIC (Билд-6.0 Матричный Тест)");
+
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
                 fontSize = 11,
@@ -94,7 +96,8 @@ namespace MMorphFix
                 $"------------------------------------------------------------------------------------------------------\n" +
                 $"{RightLegTelemetry}";
 
-            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 630, 180), systemStatus, labelStyle);
+            // Увеличили высоту Label с 180 до 280 для корректного рендеринга текста
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 630, 280), systemStatus, labelStyle);
         }
     }
 

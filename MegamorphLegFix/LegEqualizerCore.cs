@@ -12,7 +12,9 @@ namespace MMorphFix
     {
         private static bool _isProcessing = false;
 
-        // Старый метод с одним аргументом, который может вызываться кэшем или старыми хуками
+        // Кэш для быстрого сбора общей телеметрии таза
+        private static string _pelvisTelemetry = "[ТАЗ] pelvis: (1.00, 1.00, 1.00)";
+
         public static void ExecuteFix(CharacterCustomization cc)
         {
             ExecuteFix(cc, "АВТО_КОМПЕНСАЦИЯ");
@@ -32,19 +34,13 @@ namespace MMorphFix
                 if (isMainPlayer)
                     MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
 
-                // Передаем выполнение во внутренний изолированный метод.
-                // Это важнейший трюк: если внутри InnerExecute произойдет TypeLoadException 
-                // из-за отсутствия типов в DLL, этот внешний метод ExecuteFix НЕ РУХНЕТ, 
-                // а поймает ошибку в блоке catch и выведет её на радар и в консоль!
                 InnerExecute(cc, source, isMainPlayer);
             }
             catch (TypeLoadException tex)
             {
-                // Формируем четкое описание ошибки загрузки типов для OnGUI радара
                 string briefError = $"[TypeLoad] Ошибка в {tex.TargetSite} -> Не найден тип: {tex.TypeName}";
                 MMorphFixPlugin.DebugMonitorText = briefError;
 
-                // Дублируем глубокий технический лог в консоль BepInEx (красным цветом)
                 if (MMorphFixPlugin.InstanceLogger != null)
                 {
                     StringBuilder sb = new StringBuilder();
@@ -59,7 +55,6 @@ namespace MMorphFix
             }
             catch (Exception ex)
             {
-                // Перехват всех остальных стандартных ошибок (NullReference и т.д.)
                 string briefError = $"[Ошибка] {ex.GetType().Name} в {ex.TargetSite} -> {ex.Message}";
                 MMorphFixPlugin.DebugMonitorText = briefError;
 
@@ -74,14 +69,26 @@ namespace MMorphFix
             }
         }
 
-        // Логическое ядро полностью изолировано внутри этого метода, чтобы спасти основной цикл от вылета
         private static void InnerExecute(CharacterCustomization cc, string source, bool isMainPlayer)
         {
-            // ПРЯМОЙ ДОСТУП: Пытаемся достать компонент Мегаморфа через жесткий тип
             BepInExPlugin.MegaMorph megaMorphComp = cc.gameObject.GetComponent<BepInExPlugin.MegaMorph>();
 
             bool leftOk = false;
             bool rightOk = false;
+
+            // Обновляем данные по тазу (pelvis) для радара главного игрока
+            if (isMainPlayer)
+            {
+                Transform pelvis = FindPelvisRecursive(cc.gameObject.transform);
+                if (pelvis != null)
+                {
+                    _pelvisTelemetry = $"[ТАЗ] pelvis scale: {SanitizeVector(pelvis.localScale).ToString("F2")}";
+                }
+                else
+                {
+                    _pelvisTelemetry = "[ТАЗ] кость 'pelvis' не найдена в иерархии";
+                }
+            }
 
             foreach (Transform bone in cc.bones)
             {
@@ -89,12 +96,12 @@ namespace MMorphFix
 
                 if (bone.name.Equals("lThighBend", StringComparison.OrdinalIgnoreCase))
                 {
-                    ApplyDirectOffsetsFix(bone, "lThighTwist", "lShin", "lFoot", "lThighBend_scale", megaMorphComp, isMainPlayer);
+                    ApplyMatrixOffsetsFix(bone, "lThighTwist", "lShin", "lFoot", megaMorphComp, isMainPlayer);
                     leftOk = true;
                 }
                 else if (bone.name.Equals("rThighBend", StringComparison.OrdinalIgnoreCase))
                 {
-                    ApplyDirectOffsetsFix(bone, "rThighTwist", "rShin", "rFoot", "rThighBend_scale", megaMorphComp, isMainPlayer);
+                    ApplyMatrixOffsetsFix(bone, "rThighTwist", "rShin", "rFoot", megaMorphComp, isMainPlayer);
                     rightOk = true;
                 }
             }
@@ -102,11 +109,12 @@ namespace MMorphFix
             if (isMainPlayer && (leftOk || rightOk))
             {
                 MMorphFixPlugin.FixExecutionCalls++;
-                MMorphFixPlugin.DebugMonitorText = "Каскадный щит осей активен. Наследование Unity выровнено.";
+                // Склеиваем статус: состояние таза + уведомление об активной матричной защите
+                MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Матричный щит колен активен.";
             }
         }
 
-        private static void ApplyDirectOffsetsFix(Transform thighBone, string twistName, string shinName, string footName, string thighKey, BepInExPlugin.MegaMorph megaMorph, bool isMainPlayer)
+        private static void ApplyMatrixOffsetsFix(Transform thighBone, string twistName, string shinName, string footName, BepInExPlugin.MegaMorph megaMorph, bool isMainPlayer)
         {
             Transform shin = FindChildRecursive(thighBone, shinName);
             Transform foot = FindChildRecursive(thighBone, footName);
@@ -115,61 +123,61 @@ namespace MMorphFix
             Transform twist = FindChildRecursive(thighBone, twistName);
             if (twist != null) twist.localScale = Vector3.one;
 
-            // Читаем чистые пропорции слайдеров Мегаморфа (Источник Истины)
-            Vector3 configThigh = Vector3.one;
+            // Читаем идеальный целевой масштаб из ползунков Мегаморфа
             Vector3 configShin = Vector3.one;
             Vector3 configFoot = Vector3.one;
 
             if (megaMorph != null && megaMorph.offsets != null)
             {
-                if (megaMorph.offsets.TryGetValue(thighKey, out var thighOffset)) configThigh = thighOffset.offset / 100f;
-                if (megaMorph.offsets.TryGetValue(shinName + "_scale", out var shinOffset)) configShin = shinOffset.offset / 100f;
-                if (megaMorph.offsets.TryGetValue(footName + "_scale", out var footOffset)) configFoot = footOffset.offset / 100f;
+                if (megaMorph.offsets.TryGetValue(shinName + "_scale", out var shinOffset))
+                    configShin = shinOffset.offset / 100f;
+                if (megaMorph.offsets.TryGetValue(footName + "_scale", out var footOffset))
+                    configFoot = footOffset.offset / 100f;
             }
 
-            Vector3 liveThighScale = SanitizeVector(thighBone.localScale);
+            // --- ЭТАП 1: Матричная нейтрализация искажения бедра (Кандидат №1) ---
+            Quaternion localRot = shin.localRotation;
 
-            // --- ИСПРАВЛЕННЫЙ АНАТОМИЧЕСКИЙ РАСЧЕТ КОЛЕНА (Билд 6.0) ---
-            Quaternion shinRot = shin.localRotation;
+            // 1. Строим виртуальную матрицу голени без собственного масштаба
+            Matrix4x4 localMatrix = Matrix4x4.TRS(Vector3.zero, localRot, Vector3.one);
 
-            // Узнаем, насколько сильно оси бедра отличаются друг от друга (ищем нелинейное сплющивание)
-            // configThigh.x — это эталонная толщина. Мы смотрим, насколько длина (Y) меньше толщины
-            float thighFlatteningRatio = liveThighScale.y / (Mathf.Abs(liveThighScale.x) > 0.001f ? liveThighScale.x : 1f);
-            if (Mathf.Abs(thighFlatteningRatio) < 0.01f) thighFlatteningRatio = 1f;
+            // 2. Моделируем в памяти Unity-наследование масштаба от "живого" бедра
+            Matrix4x4 parentScaleMatrix = Matrix4x4.Scale(SanitizeVector(thighBone.localScale));
+            Matrix4x4 combinedMatrix = parentScaleMatrix * localMatrix;
 
-            // Проецируем коэффициент сплющенности бедра на текущий поворот колена гизмо
-            // Если колено прямое, проекция равна 1. Если согнуто на 90 градусов, ось Y ложится на Z
-            Vector3 rotationProjectedCompensation = new Vector3(
-                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.right, Vector3.forward))),
-                Mathf.Lerp(1f, thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.up, Vector3.forward))),
-                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.forward, Vector3.forward)))
+            // 3. Вычисляем длины получившихся базисных векторов (чистое искажение бедра)
+            Vector3 inheritedDistortion = new Vector3(
+                combinedMatrix.GetColumn(0).magnitude,
+                combinedMatrix.GetColumn(1).magnitude,
+                combinedMatrix.GetColumn(2).magnitude
             );
 
-            // Финальный масштаб голени: берем чистый слайдер из Мегаморфа (configShin)
-            // и умножаем ТОЛЬКО на компенсирующий коэффициент сгиба колена.
-            // Теперь при прямой ноге голень будет РОВНО равна твоему слайдеру (0.85, 0.85, 0.85)!
+            // Страховка от деления на ноль при микро-масштабах
+            inheritedDistortion.x = Mathf.Abs(inheritedDistortion.x) < 0.001f ? 1f : inheritedDistortion.x;
+            inheritedDistortion.y = Mathf.Abs(inheritedDistortion.y) < 0.001f ? 1f : inheritedDistortion.y;
+            inheritedDistortion.z = Mathf.Abs(inheritedDistortion.z) < 0.001f ? 1f : inheritedDistortion.z;
+
+            // --- ЭТАП 2: Накатываем целевой масштаб, полностью гася искажение ---
             shin.localScale = new Vector3(
-                configShin.x * rotationProjectedCompensation.x,
-                configShin.y * rotationProjectedCompensation.y,
-                configShin.z * rotationProjectedCompensation.z
+                configShin.x / inheritedDistortion.x,
+                configShin.y / inheritedDistortion.y,
+                configShin.z / inheritedDistortion.z
             );
 
-            // --- ИСПРАВЛЕННЫЙ РАСЧЕТ ГОЛЕНОСТОПА ---
-            Quaternion footRot = foot.localRotation;
-            Vector3 currentCombinedParentScale = SanitizeVector(shin.lossyScale);
-            Vector3 pelvisScale = SanitizeVector(thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one);
-
-            // Выравниваем стопу строго по её ползунку из Мегаморфа, нейтрализуя кручение голени
+            // Выравниваем стопу строго по её ползунку
             foot.localScale = configFoot;
 
-            // --- ОТПРАВКА ДАННЫХ НА РАДАР ---
+            // --- ОТПРАВКА ТОЧНОЙ ТЕЛЕМЕТРИИ НА РАДАР ---
             if (isMainPlayer)
             {
                 string side = thighBone.name.StartsWith("l") ? "ЛЕВАЯ" : "ПРАВАЯ";
+
                 string telemetry =
-                    $"[{side} НОГА ИГРОКА] Слайдер_Бедра: {configThigh.ToString("F2")} | Слайдер_Голени: {configShin.ToString("F2")}\n" +
-                    $"            -> Угол колена гизмо: {shinRot.eulerAngles.ToString("F0")}°\n" +
-                    $"            -> Выставлен локальный scale голени: {shin.localScale.ToString("F2")} | Стопы: {foot.localScale.ToString("F2")}";
+                    $"[{side} НОГА ИГРОКА]\n" +
+                    $" -> Thigh (Бедро) scale: {SanitizeVector(thighBone.localScale).ToString("F2")}\n" +
+                    $" -> Shin  (Голень) scale: {shin.localScale.ToString("F2")} (Конфиг: {configShin.ToString("F2")})\n" +
+                    $" -> Foot  (Стопа)  scale: {foot.localScale.ToString("F2")} (Конфиг: {configFoot.ToString("F2")})\n" +
+                    $" -> Угол колена гизмо : {localRot.eulerAngles.ToString("F0")}°";
 
                 if (thighBone.name.StartsWith("l"))
                     MMorphFixPlugin.LeftLegTelemetry = telemetry;
@@ -192,6 +200,17 @@ namespace MMorphFix
             for (int i = 0; i < parent.childCount; i++)
             {
                 Transform result = FindChildRecursive(parent.GetChild(i), name);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        private static Transform FindPelvisRecursive(Transform current)
+        {
+            if (current.name.Equals("pelvis", StringComparison.OrdinalIgnoreCase)) return current;
+            for (int i = 0; i < current.childCount; i++)
+            {
+                Transform result = FindPelvisRecursive(current.GetChild(i));
                 if (result != null) return result;
             }
             return null;
