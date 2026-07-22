@@ -23,7 +23,7 @@ namespace MMorphFix
             {
                 MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
 
-                // Извлекаем компонент Мегаморфа, который успешно работает на текущем персонаже
+                // Извлекаем компонент Мегаморфа
                 Component megaMorphComp = cc.gameObject.GetComponent("MegaMorph");
 
                 bool leftOk = false;
@@ -70,19 +70,38 @@ namespace MMorphFix
             Transform twist = FindChildRecursive(thighBone, twistName);
             if (twist != null) twist.localScale = Vector3.one;
 
-            // ИСТОЧНИК ИСТИНЫ (Ползунки Мегаморфа)
+            // ДЕФОЛТНЫЕ ЗНАЧЕНИЯ НА СЛУЧАЙ ОТКЛЮЧЕНИЯ МЕГАМОРФА ВО FREEPOSE
             Vector3 configThigh = Vector3.one;
             Vector3 configShin = Vector3.one;
             Vector3 configFoot = Vector3.one;
 
+            // ИЗОЛИРОВАННОЕ БЕЗОПАСНОЕ ЧТЕНИЕ СЛАЙДЕРОВ МЕГАМОРФА
             if (megaMorphComp != null)
             {
-                dynamic megaMorph = megaMorphComp;
-                object tObj, sObj, fObj;
+                try
+                {
+                    dynamic megaMorph = megaMorphComp;
 
-                if (megaMorph.offsets.TryGetValue(thighKey, out tObj) && tObj != null) configThigh = ((dynamic)tObj).offset / 100f;
-                if (megaMorph.offsets.TryGetValue(shinName + "_scale", out sObj) && sObj != null) configShin = ((dynamic)sObj).offset / 100f;
-                if (megaMorph.offsets.TryGetValue(footName + "_scale", out fObj) && fObj != null) configFoot = ((dynamic)fObj).offset / 100f;
+                    // Проверяем, существует ли вообще словарь в памяти клона во FreePose
+                    if (megaMorph.offsets != null)
+                    {
+                        object tObj, sObj, fObj;
+
+                        if (megaMorph.offsets.TryGetValue(thighKey, out tObj) && tObj != null)
+                            configThigh = ((dynamic)tObj).offset / 100f;
+
+                        if (megaMorph.offsets.TryGetValue(shinName + "_scale", out sObj) && sObj != null)
+                            configShin = ((dynamic)sObj).offset / 100f;
+
+                        if (megaMorph.offsets.TryGetValue(footName + "_scale", out fObj) && fObj != null)
+                            configFoot = ((dynamic)fObj).offset / 100f;
+                    }
+                }
+                catch (Exception)
+                {
+                    // Если словари на клоне еще не инициализированы — мягко глушим ошибку,
+                    // оставляя дефолтные масштабы, чтобы каскад расчетов НЕ падал!
+                }
             }
 
             Vector3 liveThighScale = SanitizeVector(thighBone.localScale);
@@ -95,7 +114,6 @@ namespace MMorphFix
                 Vector3.Magnitude(shinRot * Vector3.forward * liveThighScale.z)
             ));
 
-            // ИСПРАВЛЕНО: Вместо жесткой единицы делим РЕАЛЬНЫЕ значения ползунков (configShin) на перекос осей бедра!
             shin.localScale = new Vector3(
                 configShin.x / parentScaleInShinSpace.x,
                 configShin.y / parentScaleInShinSpace.y,
@@ -114,7 +132,6 @@ namespace MMorphFix
 
             Vector3 pelvisScale = SanitizeVector(thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one);
 
-            // ИСПРАВЛЕНО: Применяем реальный масштаб стопы из ползунков (configFoot)
             foot.localScale = new Vector3(
                 (configFoot.x * pelvisScale.x) / parentScaleInFootSpace.x,
                 (configFoot.y * pelvisScale.y) / parentScaleInFootSpace.y,
