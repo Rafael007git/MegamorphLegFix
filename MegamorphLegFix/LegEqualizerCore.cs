@@ -57,20 +57,18 @@ namespace MMorphFix
             if (isMainPlayer)
                 _pelvisTelemetry = $"[ТАЗ] pelvis scale: {MegamorphMathCore.SanitizeVector(pelvis.localScale).ToString("F2")}";
 
-            // --- ШАГ 0: СБОР ПОЛЗУНКОВ И РАСЧЕТ ИДЕАЛЬНОГО ПРЯМОГО КАСКАДА ---
-            Vector3 deltaPelvis = MegamorphMathCore.GetMegamorphScale(megaMorph, "pelvis_scale");
+            // --- ШАГ 0: ИСТИННЫЙ ЭТАЛОН (v0.8.0) — ЭТО ЧИСТЫЕ ПОЛЗУНКИ ИЗ КОНФИГА МЕГАМОРФА ---
+            // Больше никакого ручного искусственного перемножения векторов!
+            // Unity и Мегаморф сами знают, как масштабировать прямую ногу.
+            Vector3 idealLThighBend = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighBend_scale");
+            Vector3 idealLThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale");
+            Vector3 idealLShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "lShin_scale");
+            Vector3 idealLFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "lFoot_scale");
 
-            // Левая нога (Эталоны)
-            Vector3 idealLThighBend = Vector3.Scale(deltaPelvis, MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighBend_scale"));
-            Vector3 idealLThighTwist = Vector3.Scale(idealLThighBend, MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale"));
-            Vector3 idealLShin = Vector3.Scale(idealLThighTwist, MegamorphMathCore.GetMegamorphScale(megaMorph, "lShin_scale"));
-            Vector3 idealLFoot = Vector3.Scale(idealLShin, MegamorphMathCore.GetMegamorphScale(megaMorph, "lFoot_scale"));
-
-            // Правая нога (Эталоны)
-            Vector3 idealRThighBend = Vector3.Scale(deltaPelvis, MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighBend_scale"));
-            Vector3 idealRThighTwist = Vector3.Scale(idealRThighBend, MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale"));
-            Vector3 idealRShin = Vector3.Scale(idealRThighTwist, MegamorphMathCore.GetMegamorphScale(megaMorph, "rShin_scale"));
-            Vector3 idealRFoot = Vector3.Scale(idealRShin, MegamorphMathCore.GetMegamorphScale(megaMorph, "rFoot_scale"));
+            Vector3 idealRThighBend = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighBend_scale");
+            Vector3 idealRThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale");
+            Vector3 idealRShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "rShin_scale");
+            Vector3 idealRFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "rFoot_scale");
 
             bool processOk = false;
 
