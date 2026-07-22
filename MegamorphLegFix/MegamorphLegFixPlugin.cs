@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Reflection;
 using BepInEx;
+using BepInEx.Logging;
 using HarmonyLib;
 using UnityEngine;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.5.5")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.5.9")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Инициализация...";
@@ -16,8 +17,14 @@ namespace MMorphFix
         public static string LeftLegTelemetry = "L: Ожидание суккуба...";
         public static string RightLegTelemetry = "R: Ожидание суккуба...";
 
+        // Глобальная ссылка на логгер для вывода в консоль BepInEx
+        public static ManualLogSource InstanceLogger;
+
         private void Awake()
         {
+            InstanceLogger = Logger;
+            InstanceLogger.LogInfo("=== [LegFix] Запуск системы глубокого мониторинга скелета ===");
+
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
 
             // Хук 1: Патч редактора Мегаморфа (DoUpdate)
@@ -31,11 +38,11 @@ namespace MMorphFix
                 if (original != null && postfix != null)
                 {
                     harmony.Patch(original, null, new HarmonyMethod(postfix));
-                    DebugMonitorText = "Хук Мегаморфа ОК.";
+                    InstanceLogger.LogInfo("[LegFix] Хук DoUpdate Мегаморфа успешно установлен.");
                 }
             }
 
-            // Хук 2: Патч гизмо-редактора FreePose (Из старого прототипа Сборки 4.0)
+            // Хук 2: Патч гизмо-редактора FreePose
             Type gizmoType = AccessTools.TypeByName("TransformGizmo")
                              ?? AccessTools.TypeByName("AdvancedFreePoseMode.TransformGizmo");
             if (gizmoType != null)
@@ -45,7 +52,7 @@ namespace MMorphFix
                 if (originalGizmo != null && postfixGizmo != null)
                 {
                     harmony.Patch(originalGizmo, null, new HarmonyMethod(postfixGizmo));
-                    DebugMonitorText += " | Хук Гизмо ОК.";
+                    InstanceLogger.LogInfo("[LegFix] Хук FreePose Gizmo успешно установлен.");
                 }
             }
 
@@ -53,10 +60,12 @@ namespace MMorphFix
             try
             {
                 harmony.PatchAll();
+                DebugMonitorText = "Все хуки установлены. Ожидание фазы обсчета...";
             }
             catch (Exception ex)
             {
-                DebugMonitorText += $" | Ошибка PatchAll: {ex.Message}";
+                InstanceLogger.LogError($"[LegFix] Критическая ошибка PatchAll: {ex}");
+                DebugMonitorText = $"Ошибка Harmony PatchAll: {ex.Message}";
             }
         }
 
@@ -67,24 +76,25 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 600, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.5)");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.9.1 Log+)");
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
-                fontSize = 12,
+                fontSize = 11,
                 fontStyle = UnityEngine.FontStyle.Bold,
                 alignment = UnityEngine.TextAnchor.UpperLeft
             };
             labelStyle.normal.textColor = UnityEngine.Color.green;
 
             string systemStatus =
-                $"[СИСТЕМА] Кадры плагина: {TotalFramesCount} | Коррекции суставов: {FixExecutionCalls}\n" +
-                $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter} | Статус: {DebugMonitorText}\n" +
-                $"--------------------------------------------------------------------------------\n" +
+                $"[СИСТЕМА] Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
+                $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter}\n" +
+                $"[СТАТУС] {DebugMonitorText}\n" +
+                $"------------------------------------------------------------------------------------------------------\n" +
                 $"{LeftLegTelemetry}\n" +
-                $"--------------------------------------------------------------------------------\n" +
+                $"------------------------------------------------------------------------------------------------------\n" +
                 $"{RightLegTelemetry}";
 
-            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 580, 180), systemStatus, labelStyle);
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 630, 180), systemStatus, labelStyle);
         }
     }
 
