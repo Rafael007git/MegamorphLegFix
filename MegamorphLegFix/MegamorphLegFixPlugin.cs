@@ -7,7 +7,7 @@ using UnityEngine;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.7.0")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.7.5")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Инициализация...";
@@ -17,17 +17,16 @@ namespace MMorphFix
         public static string LeftLegTelemetry = "L: Ожидание суккуба...";
         public static string RightLegTelemetry = "R: Ожидание суккуба...";
 
-        // Глобальная ссылка на логгер для вывода в консоль BepInEx
         public static ManualLogSource InstanceLogger;
 
         private void Awake()
         {
             InstanceLogger = Logger;
-            InstanceLogger.LogInfo("=== [LegFix] Запуск системы глубокого мониторинга скелета ===");
+            InstanceLogger.LogInfo("=== [LegFix] Запуск каскадного щита 6 суставов (v0.7.5) ===");
 
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
 
-            // Хук 1: Патч редактора Мегаморфа (DoUpdate)
+            // --- ХУК 1: Патч редактора Мегаморфа (DoUpdate) ---
             Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph")
                                  ?? AccessTools.TypeByName("MegaMorph.MegaMorph")
                                  ?? AccessTools.TypeByName("MegaMorph");
@@ -38,33 +37,47 @@ namespace MMorphFix
                 if (original != null && postfix != null)
                 {
                     harmony.Patch(original, null, new HarmonyMethod(postfix));
-                    InstanceLogger.LogInfo("[LegFix] Хук DoUpdate Мегаморфа успешно установлен.");
+                    InstanceLogger.LogInfo("[LegFix] Хук MegaMorph.DoUpdate успешно установлен.");
                 }
             }
 
-            // Хук 2: Патч гизмо-редактора FreePose
-            Type gizmoType = AccessTools.TypeByName("TransformGizmo")
-                             ?? AccessTools.TypeByName("AdvancedFreePoseMode.TransformGizmo");
+            // --- ХУК 2: Восстановление FreePose (Патчим реальный Update из TransformGizmo) ---
+            Type gizmoType = AccessTools.TypeByName("RuntimeGizmos.TransformGizmo")
+                             ?? AccessTools.TypeByName("TransformGizmo");
             if (gizmoType != null)
             {
-                var originalGizmo = AccessTools.Method(gizmoType, "DoUpdate");
-                var postfixGizmo = AccessTools.Method(typeof(FreePoseGizmoPatch), "Postfix");
-                if (originalGizmo != null && postfixGizmo != null)
+                // Точка А: Живой радар при движении мыши во FreePose
+                var originalUpdate = AccessTools.Method(gizmoType, "Update");
+                var postfixUpdate = AccessTools.Method(typeof(FreePoseGizmoUpdatePatch), "Postfix");
+                if (originalUpdate != null && postfixUpdate != null)
                 {
-                    harmony.Patch(originalGizmo, null, new HarmonyMethod(postfixGizmo));
-                    InstanceLogger.LogInfo("[LegFix] Хук FreePose Gizmo успешно установлен.");
+                    harmony.Patch(originalUpdate, null, new HarmonyMethod(postfixUpdate));
+                    InstanceLogger.LogInfo("[LegFix] Хук TransformGizmo.Update (Радар) установлен.");
+                }
+
+                // Точка Б: Коррекция меша в FixedUpdate сразу ПОСЛЕ ручного разворота костей
+                var originalFixed = AccessTools.Method(gizmoType, "FixedUpdate");
+                var postfixFixed = AccessTools.Method(typeof(FreePoseGizmoFixedUpdatePatch), "Postfix");
+                if (originalFixed != null && postfixFixed != null)
+                {
+                    harmony.Patch(originalFixed, null, new HarmonyMethod(postfixFixed));
+                    InstanceLogger.LogInfo("[LegFix] Хук TransformGizmo.FixedUpdate (Фикс) установлен.");
                 }
             }
+            else
+            {
+                InstanceLogger.LogError("[LegFix] КРИТИЧЕСКАЯ ОШИБКА: Класс TransformGizmo не найден в игре!");
+            }
 
-            // Хук 3: Сквозной контроль для обычного мира через LateUpdate
+            // --- ХУК 3: Сквозной автоматический контроль (LateUpdate и Смена Поз) ---
             try
             {
                 harmony.PatchAll();
-                DebugMonitorText = "Все хуки установлены. Ожидание фазы обсчета...";
+                DebugMonitorText = "Все матричные барьеры возведены. Ожидание фазы обсчета...";
             }
             catch (Exception ex)
             {
-                InstanceLogger.LogError($"[LegFix] Критическая ошибка PatchAll: {ex}");
+                InstanceLogger.LogError($"[LegFix] Ошибка PatchAll: {ex}");
                 DebugMonitorText = $"Ошибка Harmony PatchAll: {ex.Message}";
             }
         }
@@ -76,8 +89,7 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            // Увеличили высоту прямоугольника Box с 220 до 320, чтобы вместить расширенную телеметрию
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 320), "Leg Fix REALTIME DIAGNOSTIC (Билд-6.0 Матричный Тест)");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 320), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.7.5)");
 
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
@@ -96,7 +108,6 @@ namespace MMorphFix
                 $"------------------------------------------------------------------------------------------------------\n" +
                 $"{RightLegTelemetry}";
 
-            // Увеличили высоту Label с 180 до 280 для корректного рендеринга текста
             UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 630, 280), systemStatus, labelStyle);
         }
     }
@@ -111,14 +122,33 @@ namespace MMorphFix
         }
     }
 
-    public static class FreePoseGizmoPatch
+    // Новый рабочий патч для FreePose-радара
+    public static class FreePoseGizmoUpdatePatch
     {
         public static void Postfix(MonoBehaviour __instance)
         {
-            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            // Проверяем флаг работы гизмо из исходника (runTransformGizmo)
+            bool isRunning = (bool)AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance);
+
+            if (isRunning && Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
             {
                 CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
-                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГИЗМО");
+                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГЛИФ_РАДАР");
+            }
+        }
+    }
+
+    // Фикс деформации сразу после применения ручной позы в FixedUpdate
+    public static class FreePoseGizmoFixedUpdatePatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            bool isRunning = (bool)AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance);
+
+            if (isRunning && Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГЛИФ_ФИКС");
             }
         }
     }
@@ -131,10 +161,26 @@ namespace MMorphFix
         {
             if (__instance == null) return;
 
+            // Если активен FreePose, обычный LateUpdate игнорируем, так как для него работают выделенные патчи гизмо выше
             bool isFreePoseActive = Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.isActiveAndEnabled;
             if (!isFreePoseActive)
             {
-                LegEqualizerCore.ExecuteFix(__instance, "LATEUPDATE");
+                LegEqualizerCore.ExecuteFix(__instance, "ИГРОВОЙ_МИР");
+            }
+        }
+    }
+
+    // Дополнительный хук для отлавливания смены поз из коллекции игры (галереи анимаций)
+    [HarmonyPatch(typeof(CharacterCustomization), "SetActivePose")] // Предположительное имя метода смены позы в игре
+    public static class GamePoseChangeTriggerPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(CharacterCustomization __instance)
+        {
+            if (__instance != null)
+            {
+                // Принудительно встряхиваем каскад в момент клика по новой позе
+                LegEqualizerCore.ExecuteFix(__instance, "КОЛЛЕКЦИЯ_ПОЗ");
             }
         }
     }
