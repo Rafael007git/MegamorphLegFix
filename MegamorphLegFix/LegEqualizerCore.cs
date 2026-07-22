@@ -50,7 +50,8 @@ namespace MMorphFix
             }
             catch (Exception ex)
             {
-                MMorphFixPlugin.DebugMonitorText = $"Ошибка каскада: {ex.Message}";
+                // Вместо короткой фразы выводим тип ошибки и метод, где она рванула
+                MMorphFixPlugin.DebugMonitorText = $"Сбой: {ex.GetType().Name} в {ex.TargetSite} -> {ex.Message}";
             }
             finally
             {
