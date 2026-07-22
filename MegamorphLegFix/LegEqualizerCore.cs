@@ -2,6 +2,9 @@
 
 using MM::MegaMorph;
 using System;
+using System.Collections;
+using System.Collections.Generic;
+using HarmonyLib;
 using UnityEngine;
 
 namespace MMorphFix
@@ -25,7 +28,7 @@ namespace MMorphFix
                 if (isMainPlayer)
                     MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
 
-                InnerExecute(cc, isMainPlayer);
+                InnerExecute(cc, isMainPlayer, source);
             }
             catch (Exception ex)
             {
@@ -40,7 +43,7 @@ namespace MMorphFix
             }
         }
 
-        private static void InnerExecute(CharacterCustomization cc, bool isMainPlayer)
+        private static void InnerExecute(CharacterCustomization cc, bool isMainPlayer, string source)
         {
             BepInExPlugin.MegaMorph megaMorph = cc.gameObject.GetComponent<BepInExPlugin.MegaMorph>();
 
@@ -57,13 +60,13 @@ namespace MMorphFix
             // --- ШАГ 0: СБОР ПОЛЗУНКОВ И РАСЧЕТ ИДЕАЛЬНОГО ПРЯМОГО КАСКАДА ---
             Vector3 deltaPelvis = MegamorphMathCore.GetMegamorphScale(megaMorph, "pelvis_scale");
 
-            // Левая нога
+            // Левая нога (Эталоны)
             Vector3 idealLThighBend = Vector3.Scale(deltaPelvis, MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighBend_scale"));
             Vector3 idealLThighTwist = Vector3.Scale(idealLThighBend, MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale"));
             Vector3 idealLShin = Vector3.Scale(idealLThighTwist, MegamorphMathCore.GetMegamorphScale(megaMorph, "lShin_scale"));
             Vector3 idealLFoot = Vector3.Scale(idealLShin, MegamorphMathCore.GetMegamorphScale(megaMorph, "lFoot_scale"));
 
-            // Правая нога
+            // Правая нога (Эталоны)
             Vector3 idealRThighBend = Vector3.Scale(deltaPelvis, MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighBend_scale"));
             Vector3 idealRThighTwist = Vector3.Scale(idealRThighBend, MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale"));
             Vector3 idealRShin = Vector3.Scale(idealRThighTwist, MegamorphMathCore.GetMegamorphScale(megaMorph, "rShin_scale"));
@@ -71,7 +74,9 @@ namespace MMorphFix
 
             bool processOk = false;
 
-            // 1. ПРИМЕНЕНИЕ К ЛЕВОЙ НОГЕ (3 СУСТАВА)
+            // ==========================================
+            // ПРОХОД №1: ЗАЩИТА РЕАЛЬНОГО СКЕЛЕТА ПЕРСОНАЖА
+            // ==========================================
             Transform lThighBend = FindBoneRecursive(pelvis, "lThighBend");
             Transform lThighTwist = FindBoneRecursive(pelvis, "lThighTwist");
             Transform lShin = FindBoneRecursive(pelvis, "lShin");
@@ -85,11 +90,11 @@ namespace MMorphFix
                 MegamorphMathCore.ProtectJoint(lThighTwist != null ? lThighTwist : lThighBend, lShin, idealLShin);
                 MegamorphMathCore.ProtectJoint(lShin, lFoot, idealLFoot);
 
-                if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", lThighBend, lShin, lFoot, idealLShin, idealLFoot);
+                if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
+                    UpdateLegTelemetry("ЛЕВАЯ", lThighBend, lShin, lFoot, idealLShin, idealLFoot);
                 processOk = true;
             }
 
-            // 2. ПРИМЕНЕНИЕ К ПРАВОЙ НОГЕ (3 СУСТАВА)
             Transform rThighBend = FindBoneRecursive(pelvis, "rThighBend");
             Transform rThighTwist = FindBoneRecursive(pelvis, "rThighTwist");
             Transform rShin = FindBoneRecursive(pelvis, "rShin");
@@ -103,14 +108,75 @@ namespace MMorphFix
                 MegamorphMathCore.ProtectJoint(rThighTwist != null ? rThighTwist : rThighBend, rShin, idealRShin);
                 MegamorphMathCore.ProtectJoint(rShin, rFoot, idealRFoot);
 
-                if (isMainPlayer) UpdateLegTelemetry("ПРАВАЯ", rThighBend, rShin, rFoot, idealRShin, idealRFoot);
+                if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
+                    UpdateLegTelemetry("ПРАВАЯ", rThighBend, rShin, rFoot, idealRShin, idealRFoot);
                 processOk = true;
+            }
+
+            // ==========================================
+            // ПРОХОД №2: СИНХРОННАЯ ЗАЩИТА ФАНТОМОВ ГИЗМО (FREEPOSE)
+            // ==========================================
+            if (source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase) || source == "ГЛИФ_ФИКС" || source == "ГЛИФ_РАДАР")
+            {
+                Type gizmoType = AccessTools.TypeByName("RuntimeGizmos.TransformGizmo") ?? AccessTools.TypeByName("TransformGizmo");
+                if (gizmoType != null)
+                {
+                    object gizmoInstance = AccessTools.Field(gizmoType, "transformGizmo_")?.GetValue(null);
+                    if (gizmoInstance != null)
+                    {
+                        IList tempTransform = AccessTools.Field(gizmoType, "tempTransform")?.GetValue(gizmoInstance) as IList;
+                        if (tempTransform != null && tempTransform.Count > 0)
+                        {
+                            Transform fPelvis = null, fLThighBend = null, fLThighTwist = null, fLShin = null, fLFoot = null;
+                            Transform fRThighBend = null, fRThighTwist = null, fRShin = null, fRFoot = null;
+
+                            foreach (object obj in tempTransform)
+                            {
+                                Transform t = obj as Transform;
+                                if (t == null) continue;
+
+                                if (t.name.EndsWith("pelvis", StringComparison.OrdinalIgnoreCase)) fPelvis = t;
+                                else if (t.name.EndsWith("lThighBend", StringComparison.OrdinalIgnoreCase)) fLThighBend = t;
+                                else if (t.name.EndsWith("lThighTwist", StringComparison.OrdinalIgnoreCase)) fLThighTwist = t;
+                                else if (t.name.EndsWith("lShin", StringComparison.OrdinalIgnoreCase)) fLShin = t;
+                                else if (t.name.EndsWith("lFoot", StringComparison.OrdinalIgnoreCase)) fLFoot = t;
+                                else if (t.name.EndsWith("rThighBend", StringComparison.OrdinalIgnoreCase)) fRThighBend = t;
+                                else if (t.name.EndsWith("rThighTwist", StringComparison.OrdinalIgnoreCase)) fRThighTwist = t;
+                                else if (t.name.EndsWith("rShin", StringComparison.OrdinalIgnoreCase)) fRShin = t;
+                                else if (t.name.EndsWith("rFoot", StringComparison.OrdinalIgnoreCase)) fRFoot = t;
+                            }
+
+                            // Лечим левые фантомы
+                            if (fPelvis != null && fLThighBend != null && fLShin != null && fLFoot != null)
+                            {
+                                MegamorphMathCore.ProtectJoint(fPelvis, fLThighBend, idealLThighBend);
+                                if (fLThighTwist != null) fLThighTwist.localScale = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale");
+
+                                MegamorphMathCore.ProtectJoint(fLThighTwist != null ? fLThighTwist : fLThighBend, fLShin, idealLShin);
+                                MegamorphMathCore.ProtectJoint(fLShin, fLFoot, idealLFoot);
+
+                                if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, idealLShin, idealLFoot);
+                            }
+
+                            // Лечим правые фантомы (ИСПРАВЛЕНО: строго правые кости в Проходе 2)
+                            if (fPelvis != null && fRThighBend != null && fRShin != null && fRFoot != null)
+                            {
+                                MegamorphMathCore.ProtectJoint(fPelvis, fRThighBend, idealRThighBend);
+                                if (fRThighTwist != null) fRThighTwist.localScale = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale");
+
+                                MegamorphMathCore.ProtectJoint(fRThighTwist != null ? fRThighTwist : fRThighBend, fRShin, idealRShin);
+                                MegamorphMathCore.ProtectJoint(fRShin, fRFoot, idealRFoot);
+                                if (isMainPlayer) UpdateLegTelemetry("ПРАВАЯ", fRThighBend, fRShin, fRFoot, idealRShin, idealRFoot);
+                            }
+                        }
+                    }
+                }
             }
 
             if (isMainPlayer && processOk)
             {
                 MMorphFixPlugin.FixExecutionCalls++;
-                MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Каскадный щит 6 суставов активен.";
+                MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Каскадный двойной щит активен.";
             }
         }
 
