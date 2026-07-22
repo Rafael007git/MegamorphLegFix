@@ -7,8 +7,6 @@ namespace MMorphFix
     {
         private static bool _isProcessing = false;
 
-        // ПЕРЕГРУЗКА ДЛЯ СТАРАХ ХУКОВ: Если кто-то вызовет метод с одним аргументом,
-        // мы перенаправим его в основной метод, защитив игру от TypeLoadException!
         public static void ExecuteFix(CharacterCustomization cc)
         {
             ExecuteFix(cc, "КОМПЕНСАЦИЯ");
@@ -25,6 +23,9 @@ namespace MMorphFix
             {
                 MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
 
+                // Извлекаем компонент Мегаморфа, который успешно работает на текущем персонаже
+                Component megaMorphComp = cc.gameObject.GetComponent("MegaMorph");
+
                 bool leftOk = false;
                 bool rightOk = false;
 
@@ -34,12 +35,12 @@ namespace MMorphFix
 
                     if (bone.name.Equals("lThighBend", StringComparison.OrdinalIgnoreCase))
                     {
-                        ApplyPureInverseFix(bone, "lThighTwist", "lShin", "lFoot");
+                        ApplyDirectOffsetsFix(bone, "lThighTwist", "lShin", "lFoot", "lThighBend_scale", megaMorphComp);
                         leftOk = true;
                     }
                     else if (bone.name.Equals("rThighBend", StringComparison.OrdinalIgnoreCase))
                     {
-                        ApplyPureInverseFix(bone, "rThighTwist", "rShin", "rFoot");
+                        ApplyDirectOffsetsFix(bone, "rThighTwist", "rShin", "rFoot", "rThighBend_scale", megaMorphComp);
                         rightOk = true;
                     }
                 }
@@ -47,13 +48,12 @@ namespace MMorphFix
                 if (leftOk || rightOk)
                 {
                     MMorphFixPlugin.FixExecutionCalls++;
-                    MMorphFixPlugin.DebugMonitorText = "Защитный щит суставов активен.";
+                    MMorphFixPlugin.DebugMonitorText = "Инверсия осей слайдеров активна.";
                 }
             }
             catch (Exception ex)
             {
-                // Выводим развернутый отчет, если падение произойдет внутри математики
-                MMorphFixPlugin.DebugMonitorText = $"Сбой: {ex.GetType().Name} в {ex.TargetSite} -> {ex.Message}";
+                MMorphFixPlugin.DebugMonitorText = "Ошибка каскада: " + ex.Message;
             }
             finally
             {
@@ -61,7 +61,7 @@ namespace MMorphFix
             }
         }
 
-        private static void ApplyPureInverseFix(Transform thighBone, string twistName, string shinName, string footName)
+        private static void ApplyDirectOffsetsFix(Transform thighBone, string twistName, string shinName, string footName, string thighKey, Component megaMorphComp)
         {
             Transform shin = FindChildRecursive(thighBone, shinName);
             Transform foot = FindChildRecursive(thighBone, footName);
@@ -69,6 +69,21 @@ namespace MMorphFix
 
             Transform twist = FindChildRecursive(thighBone, twistName);
             if (twist != null) twist.localScale = Vector3.one;
+
+            // ИСТОЧНИК ИСТИНЫ (Ползунки Мегаморфа)
+            Vector3 configThigh = Vector3.one;
+            Vector3 configShin = Vector3.one;
+            Vector3 configFoot = Vector3.one;
+
+            if (megaMorphComp != null)
+            {
+                dynamic megaMorph = megaMorphComp;
+                object tObj, sObj, fObj;
+
+                if (megaMorph.offsets.TryGetValue(thighKey, out tObj) && tObj != null) configThigh = ((dynamic)tObj).offset / 100f;
+                if (megaMorph.offsets.TryGetValue(shinName + "_scale", out sObj) && sObj != null) configShin = ((dynamic)sObj).offset / 100f;
+                if (megaMorph.offsets.TryGetValue(footName + "_scale", out fObj) && fObj != null) configFoot = ((dynamic)fObj).offset / 100f;
+            }
 
             Vector3 liveThighScale = SanitizeVector(thighBone.localScale);
 
@@ -80,10 +95,11 @@ namespace MMorphFix
                 Vector3.Magnitude(shinRot * Vector3.forward * liveThighScale.z)
             ));
 
+            // ИСПРАВЛЕНО: Вместо жесткой единицы делим РЕАЛЬНЫЕ значения ползунков (configShin) на перекос осей бедра!
             shin.localScale = new Vector3(
-                1.0f / parentScaleInShinSpace.x,
-                1.0f / parentScaleInShinSpace.y,
-                1.0f / parentScaleInShinSpace.z
+                configShin.x / parentScaleInShinSpace.x,
+                configShin.y / parentScaleInShinSpace.y,
+                configShin.z / parentScaleInShinSpace.z
             );
 
             // --- КАСКАДНАЯ МАТРИЧНАЯ ИНВЕРСИЯ (ГОЛЕНОСТОП) ---
@@ -98,18 +114,19 @@ namespace MMorphFix
 
             Vector3 pelvisScale = SanitizeVector(thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one);
 
+            // ИСПРАВЛЕНО: Применяем реальный масштаб стопы из ползунков (configFoot)
             foot.localScale = new Vector3(
-                pelvisScale.x / parentScaleInFootSpace.x,
-                pelvisScale.y / parentScaleInFootSpace.y,
-                pelvisScale.z / parentScaleInFootSpace.z
+                (configFoot.x * pelvisScale.x) / parentScaleInFootSpace.x,
+                (configFoot.y * pelvisScale.y) / parentScaleInFootSpace.y,
+                (configFoot.z * pelvisScale.z) / parentScaleInFootSpace.z
             );
 
             // --- ОТПРАВКА ДАННЫХ НА РАДАР ---
             string side = thighBone.name.StartsWith("l") ? "ЛЕВАЯ" : "ПРАВАЯ";
             string telemetry =
-                $"[{side} НОГА] Живое бедро: {liveThighScale.ToString("F2")} | Угол колена гизмо: {shinRot.eulerAngles.ToString("F0")}°\n" +
-                $"            -> Локальный scale голени: {shin.localScale.ToString("F2")}\n" +
-                $"            -> Локальный scale стопы: {foot.localScale.ToString("F2")}";
+                $"[{side} НОГА] Слайдер_Бедра: {configThigh.ToString("F2")} | Слайдер_Голени: {configShin.ToString("F2")}\n" +
+                $"            -> Угол колена гизмо: {shinRot.eulerAngles.ToString("F0")}°\n" +
+                $"            -> Выставлен scale голени: {shin.localScale.ToString("F2")} | Стопы: {foot.localScale.ToString("F2")}";
 
             if (thighBone.name.StartsWith("l"))
                 MMorphFixPlugin.LeftLegTelemetry = telemetry;
