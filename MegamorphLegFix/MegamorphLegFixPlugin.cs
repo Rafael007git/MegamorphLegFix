@@ -170,17 +170,41 @@ namespace MMorphFix
         }
     }
 
-    // Дополнительный хук для отлавливания смены поз из коллекции игры (галереи анимаций)
-    [HarmonyPatch(typeof(CharacterCustomization), "SetActivePose")] // Предположительное имя метода смены позы в игре
+    // ХУК: Перехватываем клик по любой встроенной позе из коллекции игры
+    [HarmonyPatch(typeof(UIFreePose), "PoseButtonClicked")]
     public static class GamePoseChangeTriggerPatch
     {
         [HarmonyPostfix]
-        public static void Postfix(CharacterCustomization __instance)
+        public static void Postfix(global::Pose code, UIFreePose __instance)
         {
-            if (__instance != null)
+            // Вытаскиваем текущего выбранного персонажа из интерфейса
+            if (__instance != null && __instance.selectedCharacter != null)
             {
-                // Принудительно встряхиваем каскад в момент клика по новой позе
-                LegEqualizerCore.ExecuteFix(__instance, "КОЛЛЕКЦИЯ_ПОЗ");
+                CharacterCustomization cc = __instance.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null)
+                {
+                    // Принудительно встряхиваем и выпрямляем каскад ног в момент смены позы
+                    LegEqualizerCore.ExecuteFix(cc, "КОЛЛЕКЦИЯ_ПОЗ");
+                }
+            }
+        }
+    }
+
+    // ХУК: Перехватываем применение сохраненных пользователем позо-файлов
+    [HarmonyPatch(typeof(LoadPoseIcon), "Click")] // Или альтернативный метод клика по кастомной позе
+    public static class CustomPoseLoadTriggerPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            // Если открыто меню свободных поз, находим персонажа и мгновенно лечим его скелет
+            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null)
+                {
+                    LegEqualizerCore.ExecuteFix(cc, "КАСТОМ_ПОЗА");
+                }
             }
         }
     }
