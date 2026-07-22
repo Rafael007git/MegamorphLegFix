@@ -87,9 +87,13 @@ namespace MMorphFix
             TotalFramesCount++;
         }
 
+        // Глобальный флаг для оперативного включения/выключения защиты
+        public static bool IsFixEnabled = true;
+
         private void OnGUI()
         {
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 320), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.7.5)");
+            // Увеличили Box до 350 по высоте, чтобы влезла кнопка управления
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 350), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.7.7)");
 
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
@@ -99,8 +103,17 @@ namespace MMorphFix
             };
             labelStyle.normal.textColor = UnityEngine.Color.green;
 
+            // Рендерим интерактивную кнопку-переключатель прямо на радаре
+            string buttonText = IsFixEnabled ? "❌ ОТКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ" : "✅ ВКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ";
+            if (UnityEngine.GUI.Button(new UnityEngine.Rect(20, 35, 250, 25), buttonText))
+            {
+                IsFixEnabled = !IsFixEnabled;
+                InstanceLogger.LogInfo($"[LegFix] Пользователь переключил состояние щита. Активен: {IsFixEnabled}");
+            }
+
             string systemStatus =
                 $"[СИСТЕМА] Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
+                $"[РЕЖИМ ЗАЩИТЫ] {(IsFixEnabled ? "АКТИВЕН (Меш защищен)" : "ВЫКЛЮЧЕН (Оригинальный Мегаморф)")}\n" +
                 $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter}\n" +
                 $"[СТАТУС] {DebugMonitorText}\n" +
                 $"------------------------------------------------------------------------------------------------------\n" +
@@ -108,8 +121,10 @@ namespace MMorphFix
                 $"------------------------------------------------------------------------------------------------------\n" +
                 $"{RightLegTelemetry}";
 
-            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 630, 280), systemStatus, labelStyle);
+            // Сдвинули Label чуть ниже (на Rect 20, 70), освобождая место под кнопку
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 70, 630, 270), systemStatus, labelStyle);
         }
+
     }
 
     public static class MegamorphDoUpdatePatch

@@ -12,6 +12,10 @@ namespace MMorphFix
         /// </summary>
         public static void ProtectJoint(Transform parentBone, Transform childBone, Vector3 idealCascadeScale)
         {
+            // ЛОВУШКА КНОПКИ: Если пользователь выключил щит на радаре, 
+            // мы мгновенно выходим, позволяя Unity и оригинальному Мегаморфу ломать кости.
+            if (!MMorphFixPlugin.IsFixEnabled) return;
+
             Quaternion localRot = childBone.localRotation;
 
             // Виртуальная локальная матрица дочерней кости без собственного масштаба
