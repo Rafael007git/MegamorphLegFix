@@ -96,8 +96,8 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            // Высота окна 350 пикселей идеально вмещает обе кнопки управления
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 350), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.8.2)");
+            // Увеличиваем высоту окна до 450, чтобы влез диагностический блок света
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 450), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.8.2 + LightFix Test)");
 
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
@@ -118,7 +118,7 @@ namespace MMorphFix
                 }
             }
 
-            // КНОПКА 2: Копирование телеметрии в буфер обмена Windows (справа, сдвинута на Rect X=280)
+            // КНОПКА 2: Копирование телеметрии в буфер обмена Windows
             if (UnityEngine.GUI.Button(new UnityEngine.Rect(280, 35, 180, 25), "📋 СКОПИРОВАТЬ ДАННЫЕ"))
             {
                 string textToCopy =
@@ -131,20 +131,20 @@ namespace MMorphFix
                     $"{LeftLegTelemetry}\n" +
                     $"--------------------------------------------------\n" +
                     $"{RightLegTelemetry}\n" +
+                    $"=== [AnatomicalLightFix ТЕЛЕМЕТРИЯ] ===\n" +
+                    $"Статус огней: {AnatomicalLightFix.Radar_Status}\n" +
+                    $"Scale (Локальный Y): {AnatomicalLightFix.Radar_HipScaleY:F4}\n" +
+                    $"Scale (Глобальный Y): {AnatomicalLightFix.Radar_HipLossyScaleY:F4}\n" +
+                    $"Light 1 Intensity: {AnatomicalLightFix.Radar_Light1_Intensity:F2}\n" +
+                    $"Light 5 Intensity: {AnatomicalLightFix.Radar_Light5_Intensity:F2}\n" +
+                    $"Light 6 Intensity: {AnatomicalLightFix.Radar_Light6_Intensity:F2}\n" +
                     $"====================================";
 
-                // Запись собранного текста в системный буфер обмена Unity/Windows
                 UnityEngine.GUIUtility.systemCopyBuffer = textToCopy;
-
-                // Меняем статусную строку, чтобы мгновенно подтвердить клик игроку
                 DebugMonitorText = "Данные радара успешно скопированы в буфер обмена!";
-
-                if (InstanceLogger != null)
-                {
-                    InstanceLogger.LogInfo("[LegFix] Телеметрия скопирована через GUI-кнопку.");
-                }
             }
 
+            // Базовый статус ног
             string systemStatus =
                 $"[СИСТЕМА] Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
                 $"[РЕЖИМ ЗАЩИТЫ] {(IsFixEnabled ? "АКТИВЕН (Меш защищен)" : "ВЫКЛЮЧЕН (Оригинальный Мегаморф)")}\n" +
@@ -155,10 +155,22 @@ namespace MMorphFix
                 $"------------------------------------------------------------------------------------------------------\n" +
                 $"{RightLegTelemetry}";
 
-            // Текст радара отрисовывается чуть ниже элементов управления
-            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 70, 630, 270), systemStatus, labelStyle);
-        }
+            // Отрисовка статуса ног
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 70, 630, 240), systemStatus, labelStyle);
 
+            // СВЕЖИЙ БЛОК: Выводим данные по огонькам в самый низ радара (Rect Y = 320)
+            string lightStatusText =
+                $"----------------------------------------------- СУСТАВНЫЕ ОГОНЬКИ (FreePose) -----------------------------------------------\n" +
+                $"[СТАТУС ОГНЕЙ] {AnatomicalLightFix.Radar_Status}\n" +
+                $"[КОСТЬ HIP SCALE] Локальный Y: {AnatomicalLightFix.Radar_HipScaleY:F4}  |  Глобальный (World) Y: {AnatomicalLightFix.Radar_HipLossyScaleY:F4}\n" +
+                $"[ТЕКУЩАЯ ЯРКОСТЬ] Light(1): {AnatomicalLightFix.Radar_Light1_Intensity:F2}  |  Light(5): {AnatomicalLightFix.Radar_Light5_Intensity:F2}  |  Light(6): {AnatomicalLightFix.Radar_Light6_Intensity:F2}";
+
+            // Создаем отдельный стиль для огней (желтый цвет, чтобы визуально отделить блок в интерфейсе)
+            UnityEngine.GUIStyle lightLabelStyle = new UnityEngine.GUIStyle(labelStyle);
+            lightLabelStyle.normal.textColor = UnityEngine.Color.yellow;
+
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 320, 630, 120), lightStatusText, lightLabelStyle);
+        }
 
     }
 
