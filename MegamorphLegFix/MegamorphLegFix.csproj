@@ -76,6 +76,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AnatomicalLightFix.cs" />
     <Compile Include="LegEqualizerCore.cs" />
     <Compile Include="MegamorphLegFixPlugin.cs" />
     <Compile Include="MegamorphMathCore.cs" />

@@ -51,6 +51,7 @@ MegamorphLegFix.slnx
 MegamorphLegFix/LegEqualizerCore.cs
 MegamorphLegFix/MegamorphLegFix.csproj
 MegamorphLegFix/MegamorphLegFixPlugin.cs
+MegamorphLegFix/MegamorphMathCore.cs
 MegamorphLegFix/Properties/AssemblyInfo.cs
 repomix-output.xml
 repomix.config.json
@@ -504,11 +505,12 @@ File: MegamorphLegFix.slnx
 File: MegamorphLegFix/LegEqualizerCore.cs
 ================
 extern alias MM;
-
+using HarmonyLib;
 using MM::MegaMorph;
 using System;
-using System.Reflection;
-using System.Text;
+using System.Collections;
+using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 namespace MMorphFix
@@ -516,12 +518,9 @@ namespace MMorphFix
     public static class LegEqualizerCore
     {
         private static bool _isProcessing = false;
+        private static string _pelvisTelemetry = "[ТАЗ] pelvis: (1.00, 1.00, 1.00)";
 
-        // Старый метод с одним аргументом, который может вызываться кэшем или старыми хуками
-        public static void ExecuteFix(CharacterCustomization cc)
-        {
-            ExecuteFix(cc, "АВТО_КОМПЕНСАЦИЯ");
-        }
+        public static void ExecuteFix(CharacterCustomization cc) => ExecuteFix(cc, "АВТО_КОМПЕНСАЦИЯ");
 
         public static void ExecuteFix(CharacterCustomization cc, string source)
         {
@@ -529,49 +528,20 @@ namespace MMorphFix
             if (cc.bones == null || cc.bones.Length == 0) return;
 
             _isProcessing = true;
-
             try
             {
                 bool isMainPlayer = cc.gameObject.name.IndexOf("Player", StringComparison.OrdinalIgnoreCase) >= 0;
-
                 if (isMainPlayer)
                     MMorphFixPlugin.LastFoundCharacter = $"{cc.gameObject.name} ({source})";
 
-                // Передаем выполнение во внутренний изолированный метод.
-                // Это важнейший трюк: если внутри InnerExecute произойдет TypeLoadException 
-                // из-за отсутствия типов в DLL, этот внешний метод ExecuteFix НЕ РУХНЕТ, 
-                // а поймает ошибку в блоке catch и выведет её на радар и в консоль!
-                InnerExecute(cc, source, isMainPlayer);
-            }
-            catch (TypeLoadException tex)
-            {
-                // Формируем четкое описание ошибки загрузки типов для OnGUI радара
-                string briefError = $"[TypeLoad] Ошибка в {tex.TargetSite} -> Не найден тип: {tex.TypeName}";
-                MMorphFixPlugin.DebugMonitorText = briefError;
-
-                // Дублируем глубокий технический лог в консоль BepInEx (красным цветом)
-                if (MMorphFixPlugin.InstanceLogger != null)
-                {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("=== [LegFix КРИТИЧЕСКИЙ СБОЙ ЗАГРУЗКИ ТИПОВ] ===");
-                    sb.AppendLine($"Метод вызова: {tex.TargetSite}");
-                    sb.AppendLine($"Имя проблемного типа: {tex.TypeName}");
-                    sb.AppendLine($"Сообщение: {tex.Message}");
-                    sb.AppendLine($"StackTrace:\n{tex.StackTrace}");
-                    sb.AppendLine("================================================");
-                    MMorphFixPlugin.InstanceLogger.LogError(sb.ToString());
-                }
+                InnerExecute(cc, isMainPlayer, source);
             }
             catch (Exception ex)
             {
-                // Перехват всех остальных стандартных ошибок (NullReference и т.д.)
-                string briefError = $"[Ошибка] {ex.GetType().Name} в {ex.TargetSite} -> {ex.Message}";
+                string briefError = $"[Ошибка] {ex.GetType().Name} in {ex.TargetSite} -> {ex.Message}";
                 MMorphFixPlugin.DebugMonitorText = briefError;
-
                 if (MMorphFixPlugin.InstanceLogger != null)
-                {
-                    MMorphFixPlugin.InstanceLogger.LogError($"[LegFix Ошибка Сустава]: {ex.GetType().Name} в {ex.TargetSite}. Подробности:\n{ex}");
-                }
+                    MMorphFixPlugin.InstanceLogger.LogError($"[LegFix Сбой]: {ex.GetType().Name} in {ex.TargetSite}.\n{ex}");
             }
             finally
             {
@@ -579,124 +549,166 @@ namespace MMorphFix
             }
         }
 
-        // Логическое ядро полностью изолировано внутри этого метода, чтобы спасти основной цикл от вылета
-        private static void InnerExecute(CharacterCustomization cc, string source, bool isMainPlayer)
+        private static void InnerExecute(CharacterCustomization cc, bool isMainPlayer, string source)
         {
-            // ПРЯМОЙ ДОСТУП: Пытаемся достать компонент Мегаморфа через жесткий тип
-            BepInExPlugin.MegaMorph megaMorphComp = cc.gameObject.GetComponent<BepInExPlugin.MegaMorph>();
+            BepInExPlugin.MegaMorph megaMorph = cc.gameObject.GetComponent<BepInExPlugin.MegaMorph>();
 
-            bool leftOk = false;
-            bool rightOk = false;
-
-            foreach (Transform bone in cc.bones)
+            Transform pelvis = FindBoneRecursive(cc.gameObject.transform, "pelvis");
+            if (pelvis == null)
             {
-                if (bone == null) continue;
+                if (isMainPlayer) MMorphFixPlugin.DebugMonitorText = "[ОШИБКА] Кость 'pelvis' не найдена!";
+                return;
+            }
 
-                if (bone.name.Equals("lThighBend", StringComparison.OrdinalIgnoreCase))
+            if (isMainPlayer)
+                _pelvisTelemetry = $"[ТАЗ] pelvis scale: {MegamorphMathCore.SanitizeVector(pelvis.localScale).ToString("F2")}";
+
+            // --- ШАГ 0: ЧИСТЫЕ ПОЛЗУНКИ ИЗ ПАМЯТИ МЕГАМОРФА (v0.8.6) ---
+            // Больше никаких ручных перемножений. Берем голые дельты, под которые настроен меш.
+            Vector3 dLThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale");
+            Vector3 dLShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "lShin_scale");
+            Vector3 dLFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "lFoot_scale");
+
+            Vector3 dRThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale");
+            Vector3 dRShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "rShin_scale");
+            Vector3 dRFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "rFoot_scale");
+
+            bool processOk = false;
+
+            // =================================================================
+            // ПРОХОД №1: ЗАЩИТА РЕАЛЬНОГО СКЕЛЕТА ПЕРСОНАЖА (ИГРОВОЙ МИР / МЕБЕЛЬ)
+            // =================================================================
+            Transform lThighBend = FindBoneRecursive(pelvis, "lThighBend");
+            Transform lThighTwist = FindBoneRecursive(pelvis, "lThighTwist");
+            Transform lShin = FindBoneRecursive(pelvis, "lShin");
+            Transform lFoot = FindBoneRecursive(pelvis, "lFoot");
+
+            if (lThighBend != null && lShin != null && lFoot != null)
+            {
+                Transform lParent = lThighTwist != null ? lThighTwist : lThighBend;
+
+                // Промежуточный твист не гнется, накатываем на него чистый эталон
+                if (lThighTwist != null) lThighTwist.localScale = dLThighTwist;
+
+                // Накатываем голый ползунок. Математическое ядро само вычтет прямые масштабы бедер!
+                MegamorphMathCore.ProtectJoint(lShin, dLShin, lParent);
+                MegamorphMathCore.ProtectJoint(lFoot, dLFoot, lShin);
+
+                if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
+                    UpdateLegTelemetry("ЛЕВАЯ", lThighBend, lShin, lFoot, dLShin, dLFoot);
+                processOk = true;
+            }
+
+            Transform rThighBend = FindBoneRecursive(pelvis, "rThighBend");
+            Transform rThighTwist = FindBoneRecursive(pelvis, "rThighTwist");
+            Transform rShin = FindBoneRecursive(pelvis, "rShin");
+            Transform rFoot = FindBoneRecursive(pelvis, "rFoot");
+
+            if (rThighBend != null && rShin != null && rFoot != null)
+            {
+                Transform rParent = rThighTwist != null ? rThighTwist : rThighBend;
+
+                if (rThighTwist != null) rThighTwist.localScale = dRThighTwist;
+
+                MegamorphMathCore.ProtectJoint(rShin, dRShin, rParent);
+                MegamorphMathCore.ProtectJoint(rFoot, dRFoot, rShin);
+
+                if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
+                    UpdateLegTelemetry("ПРАВАЯ", rThighBend, rShin, rFoot, dRShin, dRFoot);
+                processOk = true;
+            }
+
+            // =================================================================
+            // ПРОХОД №2: СИНХРОННАЯ ЗАЩИТА ФАНТОМОВ ГИЗМО (РЕЖИМ FREEPOSE)
+            // =================================================================
+            if (source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase) || source == "ГЛИФ_ФИКС" || source == "ГЛИФ_РАДАР")
+            {
+                Type gizmoType = AccessTools.TypeByName("RuntimeGizmos.TransformGizmo") ?? AccessTools.TypeByName("TransformGizmo");
+                if (gizmoType != null)
                 {
-                    ApplyDirectOffsetsFix(bone, "lThighTwist", "lShin", "lFoot", "lThighBend_scale", megaMorphComp, isMainPlayer);
-                    leftOk = true;
-                }
-                else if (bone.name.Equals("rThighBend", StringComparison.OrdinalIgnoreCase))
-                {
-                    ApplyDirectOffsetsFix(bone, "rThighTwist", "rShin", "rFoot", "rThighBend_scale", megaMorphComp, isMainPlayer);
-                    rightOk = true;
+                    object gizmoInstance = AccessTools.Field(gizmoType, "transformGizmo_")?.GetValue(null);
+                    if (gizmoInstance != null)
+                    {
+                        IList tempTransform = AccessTools.Field(gizmoType, "tempTransform")?.GetValue(gizmoInstance) as IList;
+                        if (tempTransform != null && tempTransform.Count > 0)
+                        {
+                            Transform fPelvis = null, fLThighBend = null, fLThighTwist = null, fLShin = null, fLFoot = null;
+                            Transform fRThighBend = null, fRThighTwist = null, fRShin = null, fRFoot = null;
+
+                            foreach (object obj in tempTransform)
+                            {
+                                Transform t = obj as Transform;
+                                if (t == null) continue;
+
+                                switch (t.name)
+                                {
+                                    case string s when s.EndsWith("pelvis", StringComparison.OrdinalIgnoreCase): fPelvis = t; break;
+                                    case string s when s.EndsWith("lThighBend", StringComparison.OrdinalIgnoreCase): fLThighBend = t; break;
+                                    case string s when s.EndsWith("lThighTwist", StringComparison.OrdinalIgnoreCase): fLThighTwist = t; break;
+                                    case string s when s.EndsWith("lShin", StringComparison.OrdinalIgnoreCase): fLShin = t; break;
+                                    case string s when s.EndsWith("lFoot", StringComparison.OrdinalIgnoreCase): fLFoot = t; break;
+                                    case string s when s.EndsWith("rThighBend", StringComparison.OrdinalIgnoreCase): fRThighBend = t; break;
+                                    case string s when s.EndsWith("rThighTwist", StringComparison.OrdinalIgnoreCase): fRThighTwist = t; break;
+                                    case string s when s.EndsWith("rShin", StringComparison.OrdinalIgnoreCase): fRShin = t; break;
+                                    case string s when s.EndsWith("rFoot", StringComparison.OrdinalIgnoreCase): fRFoot = t; break;
+                                }
+                            }
+
+                            // Лечим левые фантомы на экране FreePose
+                            if (fPelvis != null && fLThighBend != null && fLShin != null && fLFoot != null)
+                            {
+                                Transform flParent = fLThighTwist != null ? fLThighTwist : fLThighBend;
+                                if (fLThighTwist != null) fLThighTwist.localScale = dLThighTwist;
+
+                                MegamorphMathCore.ProtectJoint(fLShin, dLShin, flParent);
+                                MegamorphMathCore.ProtectJoint(fLFoot, dLFoot, fLShin);
+
+                                if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, dLShin, dLFoot);
+                            }
+
+                            // Лечим правые фантомы на экране FreePose
+                            if (fPelvis != null && fRThighBend != null && fRShin != null && fRFoot != null)
+                            {
+                                Transform frParent = fRThighTwist != null ? fRThighTwist : fRThighBend;
+                                if (fRThighTwist != null) fRThighTwist.localScale = dRThighTwist;
+
+                                MegamorphMathCore.ProtectJoint(fRShin, dRShin, frParent);
+                                MegamorphMathCore.ProtectJoint(fRFoot, dRFoot, fRShin);
+
+                                if (isMainPlayer) UpdateLegTelemetry("ПРАВАЯ", fRThighBend, fRShin, fRFoot, dRShin, dRFoot);
+                            }
+                        }
+                    }
                 }
             }
 
-            if (isMainPlayer && (leftOk || rightOk))
+            if (isMainPlayer && processOk)
             {
                 MMorphFixPlugin.FixExecutionCalls++;
-                MMorphFixPlugin.DebugMonitorText = "Каскадный щит осей активен. Наследование Unity выровнено.";
+                MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Щит активен [{source}]";
             }
         }
 
-        private static void ApplyDirectOffsetsFix(Transform thighBone, string twistName, string shinName, string footName, string thighKey, BepInExPlugin.MegaMorph megaMorph, bool isMainPlayer)
+
+        private static void UpdateLegTelemetry(string side, Transform thigh, Transform shin, Transform foot, Vector3 configShin, Vector3 configFoot)
         {
-            Transform shin = FindChildRecursive(thighBone, shinName);
-            Transform foot = FindChildRecursive(thighBone, footName);
-            if (shin == null || foot == null) return;
+            string telemetry =
+                $"[{side} НОГА ИГРОКА]\n" +
+                $" -> Thigh (Бедро) scale: {MegamorphMathCore.SanitizeVector(thigh.localScale).ToString("F2")}\n" +
+                $" -> Shin  (Голень) scale: {shin.localScale.ToString("F2")} (Конфиг: {configShin.ToString("F2")})\n" +
+                $" -> Foot  (Стопа)  scale: {foot.localScale.ToString("F2")} (Конфиг: {configFoot.ToString("F2")})\n" +
+                $" -> Угол вращения сустава: {shin.localRotation.eulerAngles.ToString("F0")}°";
 
-            Transform twist = FindChildRecursive(thighBone, twistName);
-            if (twist != null) twist.localScale = Vector3.one;
-
-            // Читаем чистые пропорции слайдеров Мегаморфа (Источник Истины)
-            Vector3 configThigh = Vector3.one;
-            Vector3 configShin = Vector3.one;
-            Vector3 configFoot = Vector3.one;
-
-            if (megaMorph != null && megaMorph.offsets != null)
-            {
-                if (megaMorph.offsets.TryGetValue(thighKey, out var thighOffset)) configThigh = thighOffset.offset / 100f;
-                if (megaMorph.offsets.TryGetValue(shinName + "_scale", out var shinOffset)) configShin = shinOffset.offset / 100f;
-                if (megaMorph.offsets.TryGetValue(footName + "_scale", out var footOffset)) configFoot = footOffset.offset / 100f;
-            }
-
-            Vector3 liveThighScale = SanitizeVector(thighBone.localScale);
-
-            // --- ИСПРАВЛЕННЫЙ АНАТОМИЧЕСКИЙ РАСЧЕТ КОЛЕНА (Билд 6.0) ---
-            Quaternion shinRot = shin.localRotation;
-
-            // Узнаем, насколько сильно оси бедра отличаются друг от друга (ищем нелинейное сплющивание)
-            // configThigh.x — это эталонная толщина. Мы смотрим, насколько длина (Y) меньше толщины
-            float thighFlatteningRatio = liveThighScale.y / (Mathf.Abs(liveThighScale.x) > 0.001f ? liveThighScale.x : 1f);
-            if (Mathf.Abs(thighFlatteningRatio) < 0.01f) thighFlatteningRatio = 1f;
-
-            // Проецируем коэффициент сплющенности бедра на текущий поворот колена гизмо
-            // Если колено прямое, проекция равна 1. Если согнуто на 90 градусов, ось Y ложится на Z
-            Vector3 rotationProjectedCompensation = new Vector3(
-                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.right, Vector3.forward))),
-                Mathf.Lerp(1f, thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.up, Vector3.forward))),
-                Mathf.Lerp(1f, 1f / thighFlatteningRatio, Mathf.Abs(Vector3.Dot(shinRot * Vector3.forward, Vector3.forward)))
-            );
-
-            // Финальный масштаб голени: берем чистый слайдер из Мегаморфа (configShin)
-            // и умножаем ТОЛЬКО на компенсирующий коэффициент сгиба колена.
-            // Теперь при прямой ноге голень будет РОВНО равна твоему слайдеру (0.85, 0.85, 0.85)!
-            shin.localScale = new Vector3(
-                configShin.x * rotationProjectedCompensation.x,
-                configShin.y * rotationProjectedCompensation.y,
-                configShin.z * rotationProjectedCompensation.z
-            );
-
-            // --- ИСПРАВЛЕННЫЙ РАСЧЕТ ГОЛЕНОСТОПА ---
-            Quaternion footRot = foot.localRotation;
-            Vector3 currentCombinedParentScale = SanitizeVector(shin.lossyScale);
-            Vector3 pelvisScale = SanitizeVector(thighBone.parent != null ? thighBone.parent.lossyScale : Vector3.one);
-
-            // Выравниваем стопу строго по её ползунку из Мегаморфа, нейтрализуя кручение голени
-            foot.localScale = configFoot;
-
-            // --- ОТПРАВКА ДАННЫХ НА РАДАР ---
-            if (isMainPlayer)
-            {
-                string side = thighBone.name.StartsWith("l") ? "ЛЕВАЯ" : "ПРАВАЯ";
-                string telemetry =
-                    $"[{side} НОГА ИГРОКА] Слайдер_Бедра: {configThigh.ToString("F2")} | Слайдер_Голени: {configShin.ToString("F2")}\n" +
-                    $"            -> Угол колена гизмо: {shinRot.eulerAngles.ToString("F0")}°\n" +
-                    $"            -> Выставлен локальный scale голени: {shin.localScale.ToString("F2")} | Стопы: {foot.localScale.ToString("F2")}";
-
-                if (thighBone.name.StartsWith("l"))
-                    MMorphFixPlugin.LeftLegTelemetry = telemetry;
-                else
-                    MMorphFixPlugin.RightLegTelemetry = telemetry;
-            }
+            if (side == "ЛЕВАЯ") MMorphFixPlugin.LeftLegTelemetry = telemetry;
+            else MMorphFixPlugin.RightLegTelemetry = telemetry;
         }
 
-        private static Vector3 SanitizeVector(Vector3 vector)
-        {
-            float x = (float.IsNaN(vector.x) || float.IsInfinity(vector.x) || Mathf.Abs(vector.x) < 0.01f) ? 1.0f : vector.x;
-            float y = (float.IsNaN(vector.y) || float.IsInfinity(vector.y) || Mathf.Abs(vector.y) < 0.01f) ? 1.0f : vector.y;
-            float z = (float.IsNaN(vector.z) || float.IsInfinity(vector.z) || Mathf.Abs(vector.z) < 0.01f) ? 1.0f : vector.z;
-            return new Vector3(x, y, z);
-        }
-
-        private static Transform FindChildRecursive(Transform parent, string name)
+        private static Transform FindBoneRecursive(Transform parent, string name)
         {
             if (parent.name.Equals(name, StringComparison.OrdinalIgnoreCase)) return parent;
             for (int i = 0; i < parent.childCount; i++)
             {
-                Transform result = FindChildRecursive(parent.GetChild(i), name);
+                Transform result = FindBoneRecursive(parent.GetChild(i), name);
                 if (result != null) return result;
             }
             return null;
@@ -787,6 +799,7 @@ File: MegamorphLegFix/MegamorphLegFix.csproj
   <ItemGroup>
     <Compile Include="LegEqualizerCore.cs" />
     <Compile Include="MegamorphLegFixPlugin.cs" />
+    <Compile Include="MegamorphMathCore.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
@@ -804,7 +817,7 @@ using UnityEngine;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "0.6.0")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.0.0")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Инициализация...";
@@ -814,17 +827,16 @@ namespace MMorphFix
         public static string LeftLegTelemetry = "L: Ожидание суккуба...";
         public static string RightLegTelemetry = "R: Ожидание суккуба...";
 
-        // Глобальная ссылка на логгер для вывода в консоль BepInEx
         public static ManualLogSource InstanceLogger;
 
         private void Awake()
         {
             InstanceLogger = Logger;
-            InstanceLogger.LogInfo("=== [LegFix] Запуск системы глубокого мониторинга скелета ===");
+            InstanceLogger.LogInfo("=== [LegFix] Запуск каскадного щита 6 суставов (v0.7.5) ===");
 
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");
 
-            // Хук 1: Патч редактора Мегаморфа (DoUpdate)
+            // --- ХУК 1: Патч редактора Мегаморфа (DoUpdate) ---
             Type megaMorphType = AccessTools.TypeByName("MegaMorph.BepInExPlugin+MegaMorph")
                                  ?? AccessTools.TypeByName("MegaMorph.MegaMorph")
                                  ?? AccessTools.TypeByName("MegaMorph");
@@ -835,33 +847,47 @@ namespace MMorphFix
                 if (original != null && postfix != null)
                 {
                     harmony.Patch(original, null, new HarmonyMethod(postfix));
-                    InstanceLogger.LogInfo("[LegFix] Хук DoUpdate Мегаморфа успешно установлен.");
+                    InstanceLogger.LogInfo("[LegFix] Хук MegaMorph.DoUpdate успешно установлен.");
                 }
             }
 
-            // Хук 2: Патч гизмо-редактора FreePose
-            Type gizmoType = AccessTools.TypeByName("TransformGizmo")
-                             ?? AccessTools.TypeByName("AdvancedFreePoseMode.TransformGizmo");
+            // --- ХУК 2: Восстановление FreePose (Патчим реальный Update из TransformGizmo) ---
+            Type gizmoType = AccessTools.TypeByName("RuntimeGizmos.TransformGizmo")
+                             ?? AccessTools.TypeByName("TransformGizmo");
             if (gizmoType != null)
             {
-                var originalGizmo = AccessTools.Method(gizmoType, "DoUpdate");
-                var postfixGizmo = AccessTools.Method(typeof(FreePoseGizmoPatch), "Postfix");
-                if (originalGizmo != null && postfixGizmo != null)
+                // Точка А: Живой радар при движении мыши во FreePose
+                var originalUpdate = AccessTools.Method(gizmoType, "Update");
+                var postfixUpdate = AccessTools.Method(typeof(FreePoseGizmoUpdatePatch), "Postfix");
+                if (originalUpdate != null && postfixUpdate != null)
                 {
-                    harmony.Patch(originalGizmo, null, new HarmonyMethod(postfixGizmo));
-                    InstanceLogger.LogInfo("[LegFix] Хук FreePose Gizmo успешно установлен.");
+                    harmony.Patch(originalUpdate, null, new HarmonyMethod(postfixUpdate));
+                    InstanceLogger.LogInfo("[LegFix] Хук TransformGizmo.Update (Радар) установлен.");
+                }
+
+                // Точка Б: Коррекция меша в FixedUpdate сразу ПОСЛЕ ручного разворота костей
+                var originalFixed = AccessTools.Method(gizmoType, "FixedUpdate");
+                var postfixFixed = AccessTools.Method(typeof(FreePoseGizmoFixedUpdatePatch), "Postfix");
+                if (originalFixed != null && postfixFixed != null)
+                {
+                    harmony.Patch(originalFixed, null, new HarmonyMethod(postfixFixed));
+                    InstanceLogger.LogInfo("[LegFix] Хук TransformGizmo.FixedUpdate (Фикс) установлен.");
                 }
             }
+            else
+            {
+                InstanceLogger.LogError("[LegFix] КРИТИЧЕСКАЯ ОШИБКА: Класс TransformGizmo не найден в игре!");
+            }
 
-            // Хук 3: Сквозной контроль для обычного мира через LateUpdate
+            // --- ХУК 3: Сквозной автоматический контроль (LateUpdate и Смена Поз) ---
             try
             {
                 harmony.PatchAll();
-                DebugMonitorText = "Все хуки установлены. Ожидание фазы обсчета...";
+                DebugMonitorText = "Все матричные барьеры возведены. Ожидание фазы обсчета...";
             }
             catch (Exception ex)
             {
-                InstanceLogger.LogError($"[LegFix] Критическая ошибка PatchAll: {ex}");
+                InstanceLogger.LogError($"[LegFix] Ошибка PatchAll: {ex}");
                 DebugMonitorText = $"Ошибка Harmony PatchAll: {ex.Message}";
             }
         }
@@ -871,9 +897,14 @@ namespace MMorphFix
             TotalFramesCount++;
         }
 
+        // Глобальный флаг для оперативного включения/выключения защиты
+        public static bool IsFixEnabled = true;
+
         private void OnGUI()
         {
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 220), "Leg Fix REALTIME DIAGNOSTIC (Билд-5.9.1 Log+)");
+            // Высота окна 350 пикселей идеально вмещает обе кнопки управления
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 350), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.8.2)");
+
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
                 fontSize = 11,
@@ -882,8 +913,47 @@ namespace MMorphFix
             };
             labelStyle.normal.textColor = UnityEngine.Color.green;
 
+            // КНОПКА 1: Переключение состояния матричного щита (слева)
+            string buttonShieldText = IsFixEnabled ? "❌ ОТКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ" : "✅ ВКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ";
+            if (UnityEngine.GUI.Button(new UnityEngine.Rect(20, 35, 250, 25), buttonShieldText))
+            {
+                IsFixEnabled = !IsFixEnabled;
+                if (InstanceLogger != null)
+                {
+                    InstanceLogger.LogInfo($"[LegFix] Переключено состояние щита. Активен: {IsFixEnabled}");
+                }
+            }
+
+            // КНОПКА 2: Копирование телеметрии в буфер обмена Windows (справа, сдвинута на Rect X=280)
+            if (UnityEngine.GUI.Button(new UnityEngine.Rect(280, 35, 180, 25), "📋 СКОПИРОВАТЬ ДАННЫЕ"))
+            {
+                string textToCopy =
+                    $"=== [MegamorphLegFix ТЕЛЕМЕТРИЯ] ===\n" +
+                    $"Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
+                    $"Режим защиты: {(IsFixEnabled ? "АКТИВЕН" : "ВЫКЛЮЧЕН")}\n" +
+                    $"Персонаж: {LastFoundCharacter}\n" +
+                    $"Статус: {DebugMonitorText}\n" +
+                    $"--------------------------------------------------\n" +
+                    $"{LeftLegTelemetry}\n" +
+                    $"--------------------------------------------------\n" +
+                    $"{RightLegTelemetry}\n" +
+                    $"====================================";
+
+                // Запись собранного текста в системный буфер обмена Unity/Windows
+                UnityEngine.GUIUtility.systemCopyBuffer = textToCopy;
+
+                // Меняем статусную строку, чтобы мгновенно подтвердить клик игроку
+                DebugMonitorText = "Данные радара успешно скопированы в буфер обмена!";
+
+                if (InstanceLogger != null)
+                {
+                    InstanceLogger.LogInfo("[LegFix] Телеметрия скопирована через GUI-кнопку.");
+                }
+            }
+
             string systemStatus =
                 $"[СИСТЕМА] Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
+                $"[РЕЖИМ ЗАЩИТЫ] {(IsFixEnabled ? "АКТИВЕН (Меш защищен)" : "ВЫКЛЮЧЕН (Оригинальный Мегаморф)")}\n" +
                 $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter}\n" +
                 $"[СТАТУС] {DebugMonitorText}\n" +
                 $"------------------------------------------------------------------------------------------------------\n" +
@@ -891,8 +961,11 @@ namespace MMorphFix
                 $"------------------------------------------------------------------------------------------------------\n" +
                 $"{RightLegTelemetry}";
 
-            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 35, 630, 180), systemStatus, labelStyle);
+            // Текст радара отрисовывается чуть ниже элементов управления
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 70, 630, 270), systemStatus, labelStyle);
         }
+
+
     }
 
     public static class MegamorphDoUpdatePatch
@@ -905,14 +978,33 @@ namespace MMorphFix
         }
     }
 
-    public static class FreePoseGizmoPatch
+    // Новый рабочий патч для FreePose-радара
+    public static class FreePoseGizmoUpdatePatch
     {
         public static void Postfix(MonoBehaviour __instance)
         {
-            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            // Проверяем флаг работы гизмо из исходника (runTransformGizmo)
+            bool isRunning = (bool)AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance);
+
+            if (isRunning && Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
             {
                 CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
-                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГИЗМО");
+                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГЛИФ_РАДАР");
+            }
+        }
+    }
+
+    // Фикс деформации сразу после применения ручной позы в FixedUpdate
+    public static class FreePoseGizmoFixedUpdatePatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            bool isRunning = (bool)AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance);
+
+            if (isRunning && Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГЛИФ_ФИКС");
             }
         }
     }
@@ -928,8 +1020,162 @@ namespace MMorphFix
             bool isFreePoseActive = Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.isActiveAndEnabled;
             if (!isFreePoseActive)
             {
-                LegEqualizerCore.ExecuteFix(__instance, "LATEUPDATE");
+                // Вместо мгновенного вызова запускаем корутину ожидания конца кадра,
+                // чтобы намертво перебить запеченные масштабы из анимации мебели (Furniture)
+                __instance.StartCoroutine(RunFixAtEndOfFrame(__instance));
             }
+        }
+
+        private static System.Collections.IEnumerator RunFixAtEndOfFrame(CharacterCustomization cc)
+        {
+            // Ждем, пока отработают ВСЕ аниматоры, физика мебели и скиннинг Unity в этом кадре
+            yield return new UnityEngine.WaitForEndOfFrame();
+
+            if (cc != null)
+            {
+                // Наносим финальный матричный удар, когда кости уже никто не сможет перезаписать
+                LegEqualizerCore.ExecuteFix(cc, "КОНЕЦ_КАДРА_МЕБЕЛЬ");
+            }
+        }
+    }
+
+
+    // ХУК: Перехватываем клик по любой встроенной позе из коллекции игры
+    [HarmonyPatch(typeof(UIFreePose), "PoseButtonClicked")]
+    public static class GamePoseChangeTriggerPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(global::Pose code, UIFreePose __instance)
+        {
+            // Вытаскиваем текущего выбранного персонажа из интерфейса
+            if (__instance != null && __instance.selectedCharacter != null)
+            {
+                CharacterCustomization cc = __instance.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null)
+                {
+                    // Принудительно встряхиваем и выпрямляем каскад ног в момент смены позы
+                    LegEqualizerCore.ExecuteFix(cc, "КОЛЛЕКЦИЯ_ПОЗ");
+                }
+            }
+        }
+    }
+
+    // ХУК: Перехватываем применение сохраненных пользователем позо-файлов
+    [HarmonyPatch(typeof(LoadPoseIcon), "Click")] // Или альтернативный метод клика по кастомной позе
+    public static class CustomPoseLoadTriggerPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            // Если открыто меню свободных поз, находим персонажа и мгновенно лечим его скелет
+            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null)
+                {
+                    LegEqualizerCore.ExecuteFix(cc, "КАСТОМ_ПОЗА");
+                }
+            }
+        }
+    }
+}
+
+================
+File: MegamorphLegFix/MegamorphMathCore.cs
+================
+extern alias MM;
+
+using MM::MegaMorph;
+using System;
+using UnityEngine;
+
+namespace MMorphFix
+{
+    public static class MegamorphMathCore
+    {
+        /// <summary>
+        /// Матричный Щит Изгиба: компенсирует ТОЛЬКО тригонометрический перекос от поворота (v0.8.6)
+        /// </summary>
+        public static void ProtectJoint(Transform childBone, Vector3 idealChildScale, Transform parentBone)
+        {
+            if (!MMorphFixPlugin.IsFixEnabled) return;
+
+            Quaternion localRot = childBone.localRotation;
+            Vector3 parentScale = SanitizeVector(parentBone.localScale);
+
+            // Если родителем является ThighTwist, его собственный localScale равен 1, 
+            // но на него давит реальное бедро ThighBend. Берем масштаб дедушки для честности.
+            if (parentBone.name.EndsWith("ThighTwist", StringComparison.OrdinalIgnoreCase) && parentBone.parent != null)
+            {
+                parentScale = SanitizeVector(parentBone.parent.localScale);
+            }
+
+            // 1. Матрица при ЖИВОМ ПОВОРОТЕ сустава на сцене
+            Matrix4x4 localMatrixLive = Matrix4x4.TRS(Vector3.zero, localRot, Vector3.one);
+            Matrix4x4 parentScaleMatrix = Matrix4x4.Scale(parentScale);
+            Matrix4x4 combinedMatrixLive = parentScaleMatrix * localMatrixLive;
+
+            Vector3 distortionLive = new Vector3(
+                combinedMatrixLive.GetColumn(0).magnitude,
+                combinedMatrixLive.GetColumn(1).magnitude,
+                combinedMatrixLive.GetColumn(2).magnitude
+            );
+
+            // 2. ЭТАЛОННАЯ Матрица при ПРЯМОМ суставе (Угол строго 0 градусов)
+            Matrix4x4 localMatrixStraight = Matrix4x4.TRS(Vector3.zero, Quaternion.identity, Vector3.one);
+            Matrix4x4 combinedMatrixStraight = parentScaleMatrix * localMatrixStraight;
+
+            Vector3 distortionStraight = new Vector3(
+                combinedMatrixStraight.GetColumn(0).magnitude,
+                combinedMatrixStraight.GetColumn(1).magnitude,
+                combinedMatrixStraight.GetColumn(2).magnitude
+            );
+
+            // Санитарная проверка от деления на ноль
+            distortionLive.x = Mathf.Abs(distortionLive.x) < 0.001f ? 1f : distortionLive.x;
+            distortionLive.y = Mathf.Abs(distortionLive.y) < 0.001f ? 1f : distortionLive.y;
+            distortionLive.z = Mathf.Abs(distortionLive.z) < 0.001f ? 1f : distortionLive.z;
+
+            distortionStraight.x = Mathf.Abs(distortionStraight.x) < 0.001f ? 1f : distortionStraight.x;
+            distortionStraight.y = Mathf.Abs(distortionStraight.y) < 0.001f ? 1f : distortionStraight.y;
+            distortionStraight.z = Mathf.Abs(distortionStraight.z) < 0.001f ? 1f : distortionStraight.z;
+
+            // ЧИСТЫЙ КОЭФФИЦИЕНТ ИСКАЖЕНИЯ ОТ ИЗГИБА СУСТАВА
+            // На прямой ноге distortionLive и distortionStraight равны один в один! 
+            // Их деление друг на друга даст чистую, идеальную единицу (1, 1, 1).
+            Vector3 angularPureDistortion = new Vector3(
+                distortionLive.x / distortionStraight.x,
+                distortionLive.y / distortionStraight.y,
+                distortionLive.z / distortionStraight.z
+            );
+
+            // НАКАТЫВАНИЕ: Корректируем масштаб строго на дельту изгиба
+            childBone.localScale = new Vector3(
+                idealChildScale.x / angularPureDistortion.x,
+                idealChildScale.y / angularPureDistortion.y,
+                idealChildScale.z / angularPureDistortion.z
+            );
+        }
+
+
+        public static Vector3 GetMegamorphScale(BepInExPlugin.MegaMorph megaMorph, string boneScaleKey)
+        {
+            if (megaMorph != null && megaMorph.offsets != null)
+            {
+                if (megaMorph.offsets.TryGetValue(boneScaleKey, out var offsetData))
+                {
+                    return offsetData.offset / 100f;
+                }
+            }
+            return Vector3.one;
+        }
+
+        public static Vector3 SanitizeVector(Vector3 vector)
+        {
+            float x = (float.IsNaN(vector.x) || float.IsInfinity(vector.x) || Mathf.Abs(vector.x) < 0.01f) ? 1.0f : vector.x;
+            float y = (float.IsNaN(vector.y) || float.IsInfinity(vector.y) || Mathf.Abs(vector.y) < 0.01f) ? 1.0f : vector.y;
+            float z = (float.IsNaN(vector.z) || float.IsInfinity(vector.z) || Mathf.Abs(vector.z) < 0.01f) ? 1.0f : vector.z;
+            return new Vector3(x, y, z);
         }
     }
 }

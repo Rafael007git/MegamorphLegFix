@@ -225,6 +225,13 @@ namespace MMorphFix
             {
                 // Наносим финальный матричный удар, когда кости уже никто не сможет перезаписать
                 LegEqualizerCore.ExecuteFix(cc, "КОНЕЦ_КАДРА_МЕБЕЛЬ");
+
+                // 👇 ВНЕДРЯЕМ СЮДА
+                // Передаем корневой GameObject персонажа для независимого и легкого контроля огоньков
+                if (cc.gameObject != null)
+                {
+                    AnatomicalLightFix.MonitorAndExecute(cc.gameObject);
+                }
             }
         }
     }
