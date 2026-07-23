@@ -57,7 +57,7 @@ namespace MMorphFix
             if (isMainPlayer)
                 _pelvisTelemetry = $"[ТАЗ] pelvis scale: {MegamorphMathCore.SanitizeVector(pelvis.localScale).ToString("F2")}";
 
-            // --- ШАГ 0: СБОР ЧИСТЫХ ЭТАЛОНОВ ИЗ ПАМЯТИ МЕГАМОРФА (v0.9.0) ---
+            // --- ШАГ 0: СБОР ЧИСТЫХ ЭТАЛОНОВ ИЗ ПАМЯТИ МЕГАМОРФА (v0.8.2) ---
             // Мегаморф уже посчитал финальные числа для прямой ноги с учетом ВСЕХ слайдеров целлюлита/объемов.
             Vector3 idealPelvis = MegamorphMathCore.GetMegamorphScale(megaMorph, "pelvis_scale");
 
