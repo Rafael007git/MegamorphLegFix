@@ -85,16 +85,15 @@ namespace MMorphFix
 
             if (lThighBend != null && lShin != null && lFoot != null)
             {
-                // 1. Тазобедренный сустав: зависит от Таза (родитель для ThighBend — pelvis)
-                MegamorphMathCore.ProtectJoint(lThighBend, idealLThighBend, idealPelvis, Vector3.one);
+                // УБРАНО: Защиту тазобедренного сустава убрали! Мегаморф сам управляет localScale бедра.
 
                 // Промежуточный твист не гнется, накатываем на него чистый эталон
                 if (lThighTwist != null) lThighTwist.localScale = idealLThighTwist;
 
-                // 2. Коленный сустав: зависит от Бедра и Твиста (родитель для Shin — ThighTwist, деформация идет от ThighBend)
+                // 1. КОЛЕНО ЛЕВОЕ: Защищаем голень относительно Бедра и Твиста
                 MegamorphMathCore.ProtectJoint(lShin, idealLShin, idealLThighTwist, idealLThighBend);
 
-                // 3. Голеностопный сустав: зависит от Голени и Твиста (родитель для Foot — lShin)
+                // 2. СТОПА ЛЕВАЯ: Защищаем стопу относительно Голени и Твиста
                 MegamorphMathCore.ProtectJoint(lFoot, idealLFoot, idealLShin, idealLThighTwist);
 
                 if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
@@ -109,14 +108,13 @@ namespace MMorphFix
 
             if (rThighBend != null && rShin != null && rFoot != null)
             {
-                // 4. Тазобедренный сустав
-                MegamorphMathCore.ProtectJoint(rThighBend, idealRThighBend, idealPelvis, Vector3.one);
+                // УБРАНО: Защиту правого бедра тоже убрали.
                 if (rThighTwist != null) rThighTwist.localScale = idealRThighTwist;
 
-                // 5. Коленный сустав
+                // 3. КОЛЕНО ПРАВОЕ
                 MegamorphMathCore.ProtectJoint(rShin, idealRShin, idealRThighTwist, idealRThighBend);
 
-                // 6. Голеностопный сустав
+                // 4. СТОПА ПРАВАЯ
                 MegamorphMathCore.ProtectJoint(rFoot, idealRFoot, idealRShin, idealRThighTwist);
 
                 if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
@@ -163,7 +161,6 @@ namespace MMorphFix
                             // Лечим левые фантомы на экране
                             if (fPelvis != null && fLThighBend != null && fLShin != null && fLFoot != null)
                             {
-                                MegamorphMathCore.ProtectJoint(fLThighBend, idealLThighBend, idealPelvis, Vector3.one);
                                 if (fLThighTwist != null) fLThighTwist.localScale = idealLThighTwist;
 
                                 MegamorphMathCore.ProtectJoint(fLShin, idealLShin, idealLThighTwist, idealLThighBend);
@@ -176,7 +173,6 @@ namespace MMorphFix
                             // Лечим правые фантомы на экране
                             if (fPelvis != null && fRThighBend != null && fRShin != null && fRFoot != null)
                             {
-                                MegamorphMathCore.ProtectJoint(fRThighBend, idealRThighBend, idealPelvis, Vector3.one);
                                 if (fRThighTwist != null) fRThighTwist.localScale = idealRThighTwist;
 
                                 MegamorphMathCore.ProtectJoint(fRShin, idealRShin, idealRThighTwist, idealRThighBend);
