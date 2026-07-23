@@ -32,10 +32,10 @@ namespace MMorphFix
             }
             catch (Exception ex)
             {
-                string briefError = $"[Ошибка] {ex.GetType().Name} в {ex.TargetSite} -> {ex.Message}";
+                string briefError = $"[Ошибка] {ex.GetType().Name} in {ex.TargetSite} -> {ex.Message}";
                 MMorphFixPlugin.DebugMonitorText = briefError;
                 if (MMorphFixPlugin.InstanceLogger != null)
-                    MMorphFixPlugin.InstanceLogger.LogError($"[LegFix Сбой]: {ex.GetType().Name} в {ex.TargetSite}.\n{ex}");
+                    MMorphFixPlugin.InstanceLogger.LogError($"[LegFix Сбой]: {ex.GetType().Name} in {ex.TargetSite}.\n{ex}");
             }
             finally
             {
@@ -57,21 +57,11 @@ namespace MMorphFix
             if (isMainPlayer)
                 _pelvisTelemetry = $"[ТАЗ] pelvis scale: {MegamorphMathCore.SanitizeVector(pelvis.localScale).ToString("F2")}";
 
-            // --- ШАГ 0: СБОР ЧИСТЫХ ЭТАЛОНОВ ИЗ ПАМЯТИ МЕГАМОРФА (v0.8.2) ---
-            // Мегаморф уже посчитал финальные числа для прямой ноги с учетом ВСЕХ слайдеров целлюлита/объемов.
-            Vector3 idealPelvis = MegamorphMathCore.GetMegamorphScale(megaMorph, "pelvis_scale");
-
-            // Левая нога (Прямые эталоны)
-            Vector3 idealLThighBend = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighBend_scale");
-            Vector3 idealLThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale");
-            Vector3 idealLShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "lShin_scale");
-            Vector3 idealLFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "lFoot_scale");
-
-            // Правая нога (Прямые эталоны)
-            Vector3 idealRThighBend = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighBend_scale");
-            Vector3 idealRThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale");
-            Vector3 idealRShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "rShin_scale");
-            Vector3 idealRFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "rFoot_scale");
+            // --- ШАГ 0: ЧИТАЕМ ЧИСТЫЕ ПОЛЗУНКИ ИЗ ПАМЯТИ МЕГАМОРФА ---
+            Vector3 dLShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "lShin_scale");
+            Vector3 dLFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "lFoot_scale");
+            Vector3 dRShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "rShin_scale");
+            Vector3 dRFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "rFoot_scale");
 
             bool processOk = false;
 
@@ -85,19 +75,18 @@ namespace MMorphFix
 
             if (lThighBend != null && lShin != null && lFoot != null)
             {
-                // УБРАНО: Защиту тазобедренного сустава убрали! Мегаморф сам управляет localScale бедра.
+                Transform lParent = lThighTwist != null ? lThighTwist : lThighBend;
 
-                // Промежуточный твист не гнется, накатываем на него чистый эталон
-                if (lThighTwist != null) lThighTwist.localScale = idealLThighTwist;
+                // СТРОИМ СИММЕТРИЧНЫЕ ЧИСЛИТЕЛИ НА БАЗЕ ЖИВЫХ МАСШТАБОВ
+                Vector3 idealLShinWithParent = Vector3.Scale(lParent.localScale, dLShin);
+                Vector3 idealLFootWithParent = Vector3.Scale(lShin.localScale, dLFoot);
 
-                // 1. КОЛЕНО ЛЕВОЕ: Защищаем голень относительно Бедра и Твиста
-                MegamorphMathCore.ProtectJoint(lShin, idealLShin, idealLThighTwist, idealLThighBend);
-
-                // 2. СТОПА ЛЕВАЯ: Защищаем стопу относительно Голени и Твиста
-                MegamorphMathCore.ProtectJoint(lFoot, idealLFoot, idealLShin, idealLThighTwist);
+                // ЗАПУСКАЕМ МАТРИЧНЫЙ ЩИТ КОЛЕНА И СТОПЫ
+                MegamorphMathCore.ProtectJoint(lShin, idealLShinWithParent, lParent);
+                MegamorphMathCore.ProtectJoint(lFoot, idealLFootWithParent, lShin);
 
                 if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
-                    UpdateLegTelemetry("ЛЕВАЯ", lThighBend, lShin, lFoot, idealLShin, idealLFoot);
+                    UpdateLegTelemetry("ЛЕВАЯ", lThighBend, lShin, lFoot, dLShin, dLFoot);
                 processOk = true;
             }
 
@@ -108,17 +97,16 @@ namespace MMorphFix
 
             if (rThighBend != null && rShin != null && rFoot != null)
             {
-                // УБРАНО: Защиту правого бедра тоже убрали.
-                if (rThighTwist != null) rThighTwist.localScale = idealRThighTwist;
+                Transform rParent = rThighTwist != null ? rThighTwist : rThighBend;
 
-                // 3. КОЛЕНО ПРАВОЕ
-                MegamorphMathCore.ProtectJoint(rShin, idealRShin, idealRThighTwist, idealRThighBend);
+                Vector3 idealRShinWithParent = Vector3.Scale(rParent.localScale, dRShin);
+                Vector3 idealRFootWithParent = Vector3.Scale(rShin.localScale, dRFoot);
 
-                // 4. СТОПА ПРАВАЯ
-                MegamorphMathCore.ProtectJoint(rFoot, idealRFoot, idealRShin, idealRThighTwist);
+                MegamorphMathCore.ProtectJoint(rShin, idealRShinWithParent, rParent);
+                MegamorphMathCore.ProtectJoint(rFoot, idealRFootWithParent, rShin);
 
                 if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
-                    UpdateLegTelemetry("ПРАВАЯ", rThighBend, rShin, rFoot, idealRShin, idealRFoot);
+                    UpdateLegTelemetry("ПРАВАЯ", rThighBend, rShin, rFoot, dRShin, dRFoot);
                 processOk = true;
             }
 
@@ -158,27 +146,32 @@ namespace MMorphFix
                                 }
                             }
 
-                            // Лечим левые фантомы на экране
+                            // Лечим левые фантомы на экране FreePose
                             if (fPelvis != null && fLThighBend != null && fLShin != null && fLFoot != null)
                             {
-                                if (fLThighTwist != null) fLThighTwist.localScale = idealLThighTwist;
+                                Transform flParent = fLThighTwist != null ? fLThighTwist : fLThighBend;
 
-                                MegamorphMathCore.ProtectJoint(fLShin, idealLShin, idealLThighTwist, idealLThighBend);
-                                MegamorphMathCore.ProtectJoint(fLFoot, idealLFoot, idealLShin, idealLThighTwist);
+                                Vector3 idealFLShinWithParent = Vector3.Scale(flParent.localScale, dLShin);
+                                Vector3 idealFLFootWithParent = Vector3.Scale(fLShin.localScale, dLFoot);
 
-                                if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, idealLShin, idealLFoot);
-                                if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, idealLShin, idealLFoot);
+                                MegamorphMathCore.ProtectJoint(fLShin, idealFLShinWithParent, flParent);
+                                MegamorphMathCore.ProtectJoint(fLFoot, idealFLFootWithParent, fLShin);
+
+                                if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, dLShin, dLFoot);
                             }
 
-                            // Лечим правые фантомы на экране
+                            // Лечим правые фантомы на экране FreePose
                             if (fPelvis != null && fRThighBend != null && fRShin != null && fRFoot != null)
                             {
-                                if (fRThighTwist != null) fRThighTwist.localScale = idealRThighTwist;
+                                Transform frParent = fRThighTwist != null ? fRThighTwist : fRThighBend;
 
-                                MegamorphMathCore.ProtectJoint(fRShin, idealRShin, idealRThighTwist, idealRThighBend);
-                                MegamorphMathCore.ProtectJoint(fRFoot, idealRFoot, idealRShin, idealRThighTwist);
+                                Vector3 idealFRShinWithParent = Vector3.Scale(frParent.localScale, dRShin);
+                                Vector3 idealFRFootWithParent = Vector3.Scale(fRShin.localScale, dRFoot);
 
-                                if (isMainPlayer) UpdateLegTelemetry("ПРАВАЯ", fRThighBend, fRShin, fRFoot, idealRShin, idealRFoot);
+                                MegamorphMathCore.ProtectJoint(fRShin, idealFRShinWithParent, frParent);
+                                MegamorphMathCore.ProtectJoint(fRFoot, idealFRFootWithParent, fRShin);
+
+                                if (isMainPlayer) UpdateLegTelemetry("ПРАВАЯ", fRThighBend, fRShin, fRFoot, dRShin, dRFoot);
                             }
                         }
                     }
@@ -188,17 +181,19 @@ namespace MMorphFix
             if (isMainPlayer && processOk)
             {
                 MMorphFixPlugin.FixExecutionCalls++;
+                MMorphFixPlugin.FixExecutionCalls++;
+                // На радар выводится честный источник вызова (source)
                 MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Щит активен [{source}]";
             }
         }
 
-        private static void UpdateLegTelemetry(string side, Transform thigh, Transform shin, Transform foot, Vector3 idealShin, Vector3 idealFoot)
+        private static void UpdateLegTelemetry(string side, Transform thigh, Transform shin, Transform foot, Vector3 configShin, Vector3 configFoot)
         {
             string telemetry =
                 $"[{side} НОГА ИГРОКА]\n" +
                 $" -> Thigh (Бедро) scale: {MegamorphMathCore.SanitizeVector(thigh.localScale).ToString("F2")}\n" +
-                $" -> Shin  (Голень) scale: {shin.localScale.ToString("F2")} (Прямой Эталон: {idealShin.ToString("F2")})\n" +
-                $" -> Foot  (Стопа)  scale: {foot.localScale.ToString("F2")} (Прямой Эталон: {idealFoot.ToString("F2")})\n" +
+                $" -> Shin  (Голень) scale: {shin.localScale.ToString("F2")} (Конфиг: {configShin.ToString("F2")})\n" +
+                $" -> Foot  (Стопа)  scale: {foot.localScale.ToString("F2")} (Конфиг: {configFoot.ToString("F2")})\n" +
                 $" -> Угол вращения сустава: {shin.localRotation.eulerAngles.ToString("F0")}°";
 
             if (side == "ЛЕВАЯ") MMorphFixPlugin.LeftLegTelemetry = telemetry;
