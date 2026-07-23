@@ -92,8 +92,8 @@ namespace MMorphFix
 
         private void OnGUI()
         {
-            // Увеличили Box до 350 по высоте, чтобы влезла кнопка управления
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 350), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.7.7)");
+            // Высота окна 350 пикселей идеально вмещает обе кнопки управления
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 350), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.8.2)");
 
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
@@ -103,12 +103,42 @@ namespace MMorphFix
             };
             labelStyle.normal.textColor = UnityEngine.Color.green;
 
-            // Рендерим интерактивную кнопку-переключатель прямо на радаре
-            string buttonText = IsFixEnabled ? "❌ ОТКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ" : "✅ ВКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ";
-            if (UnityEngine.GUI.Button(new UnityEngine.Rect(20, 35, 250, 25), buttonText))
+            // КНОПКА 1: Переключение состояния матричного щита (слева)
+            string buttonShieldText = IsFixEnabled ? "❌ ОТКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ" : "✅ ВКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ";
+            if (UnityEngine.GUI.Button(new UnityEngine.Rect(20, 35, 250, 25), buttonShieldText))
             {
                 IsFixEnabled = !IsFixEnabled;
-                InstanceLogger.LogInfo($"[LegFix] Пользователь переключил состояние щита. Активен: {IsFixEnabled}");
+                if (InstanceLogger != null)
+                {
+                    InstanceLogger.LogInfo($"[LegFix] Переключено состояние щита. Активен: {IsFixEnabled}");
+                }
+            }
+
+            // КНОПКА 2: Копирование телеметрии в буфер обмена Windows (справа, сдвинута на Rect X=280)
+            if (UnityEngine.GUI.Button(new UnityEngine.Rect(280, 35, 180, 25), "📋 СКОПИРОВАТЬ ДАННЫЕ"))
+            {
+                string textToCopy =
+                    $"=== [MegamorphLegFix ТЕЛЕМЕТРИЯ] ===\n" +
+                    $"Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
+                    $"Режим защиты: {(IsFixEnabled ? "АКТИВЕН" : "ВЫКЛЮЧЕН")}\n" +
+                    $"Персонаж: {LastFoundCharacter}\n" +
+                    $"Статус: {DebugMonitorText}\n" +
+                    $"--------------------------------------------------\n" +
+                    $"{LeftLegTelemetry}\n" +
+                    $"--------------------------------------------------\n" +
+                    $"{RightLegTelemetry}\n" +
+                    $"====================================";
+
+                // Запись собранного текста в системный буфер обмена Unity/Windows
+                UnityEngine.GUIUtility.systemCopyBuffer = textToCopy;
+
+                // Меняем статусную строку, чтобы мгновенно подтвердить клик игроку
+                DebugMonitorText = "Данные радара успешно скопированы в буфер обмена!";
+
+                if (InstanceLogger != null)
+                {
+                    InstanceLogger.LogInfo("[LegFix] Телеметрия скопирована через GUI-кнопку.");
+                }
             }
 
             string systemStatus =
@@ -121,9 +151,10 @@ namespace MMorphFix
                 $"------------------------------------------------------------------------------------------------------\n" +
                 $"{RightLegTelemetry}";
 
-            // Сдвинули Label чуть ниже (на Rect 20, 70), освобождая место под кнопку
+            // Текст радара отрисовывается чуть ниже элементов управления
             UnityEngine.GUI.Label(new UnityEngine.Rect(20, 70, 630, 270), systemStatus, labelStyle);
         }
+
 
     }
 
