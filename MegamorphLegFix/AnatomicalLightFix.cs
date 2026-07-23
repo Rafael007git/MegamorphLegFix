@@ -7,7 +7,6 @@ namespace MMorphFix
 {
     public static class AnatomicalLightFix
     {
-        // 1. Наш жесткий эталон констант (зашьем после замера)
         private static readonly Dictionary<string, float> _referenceIntensities = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
         {
             { "Point Light (1)", 2.5f },
@@ -15,42 +14,49 @@ namespace MMorphFix
             { "Point Light (6)", 2.5f }
         };
 
-        // Переменные для отслеживания изменений масштаба без тяжелого поиска
         private static Vector3 _lastTrackedScale = Vector3.one;
         private static float _lastLetItBeDarkMultiplier = -1f;
 
-        // Кэш ссылок на компоненты, чтобы не искать их каждый кадр
         private static Transform _cachedHip = null;
         private static Transform _cachedLightGroup = null;
         private static int _cachedCharacterId = 0;
         private static System.Reflection.FieldInfo _letItBeDarkField = null;
         private static bool _reflectionChecked = false;
 
-        /// <summary>
-        /// Вызывается в LateUpdate. Проверяет дельту масштаба кости hip. 
-        /// Если масштаб изменился (пресет, поза, слайдер) — мгновенно корректирует свет.
-        /// </summary>
         public static void MonitorAndExecute(GameObject characterRoot)
         {
             if (characterRoot == null) return;
 
             int currentId = characterRoot.GetInstanceID();
 
-            // 1. Инициализируем или обновляем кэш ссылок при смене персонажа
             if (_cachedCharacterId != currentId || _cachedHip == null || _cachedLightGroup == null)
             {
                 _cachedCharacterId = currentId;
+
+                // УЛУЧШЕННЫЙ ПОИСК: ищем кость hip, даже если она называется "Bone/hip"
                 _cachedHip = FindBoneRecursive(characterRoot.transform, "hip");
+
                 if (_cachedHip != null)
                 {
+                    // Пробуем найти группу по вашему пути
                     _cachedLightGroup = _cachedHip.Find("abdomenLower/abdomenUpper/chestLower/character light group");
-                    _lastTrackedScale = _cachedHip.localScale; // Сбрасываем трекер масштаба
+
+                    // Защита: если путь изменился из-за префикса "Bone/", ищем группу рекурсивно внутри hip
+                    if (_cachedLightGroup == null)
+                    {
+                        _cachedLightGroup = FindBoneRecursive(_cachedHip, "character light group");
+                    }
+                }
+                else
+                {
+                    // Глубокий отладочный лог: пишется только один раз при спавне, если скелет вообще не распознан
+                    MMorphFixPlugin.InstanceLogger.LogWarning($"[LegFix-Light] Не удалось найти кость 'hip' в корне {characterRoot.name}");
                 }
             }
 
             if (_cachedHip == null || _cachedLightGroup == null) return;
 
-            // 2. Быстрый и легкий опрос Let It Be Dark (раз в кадр)
+            // Опрос Let It Be Dark
             if (!_reflectionChecked)
             {
                 _reflectionChecked = true;
@@ -71,59 +77,53 @@ namespace MMorphFix
                 catch { letItBeDarkMultiplier = 1.0f; }
             }
 
-            // 3. ПРОВЕРКА НА ИЗМЕНЕНИЯ (Ядро эргономики):
-            // Мы сравниваем текущий масштаб кости и значение слайдера с прошлым кадром.
-            // Если они ТОЧНО ТАКИЕ ЖЕ, мы просто выходим из метода. Процессор отдыхает!
             Vector3 currentScale = _cachedHip.localScale;
             if (currentScale == _lastTrackedScale && Mathf.Approximately(letItBeDarkMultiplier, _lastLetItBeDarkMultiplier))
             {
                 return;
             }
 
-            // Если управление дошло сюда — значит сработал пресет, анимация, поза или слайдер!
             _lastTrackedScale = currentScale;
             _lastLetItBeDarkMultiplier = letItBeDarkMultiplier;
 
-            // Защита от NaN / деления на ноль
             float yScale = currentScale.y;
             float hipModifier = (float.IsNaN(yScale) || float.IsInfinity(yScale) || Mathf.Abs(yScale) < 0.01f) ? 1.0f : yScale;
 
-            // 4. Мгновенно применяем формулу произведения к огонькам
+            // Применяем формулу и выводим заветный замер
             for (int i = 0; i < _cachedLightGroup.childCount; i++)
             {
                 Transform lightObj = _cachedLightGroup.GetChild(i);
-                if (_referenceIntensities.TryGetValue(lightObj.name, out float baseIntensity))
+                if (_referenceIntensities.ContainsKey(lightObj.name))
                 {
                     Light light = lightObj.GetComponent<Light>();
                     if (light != null && light.type == LightType.Point)
                     {
-                        // ВРЕМЕННЫЙ ЗАМЕР: Вызовется ТОЛЬКО в момент смены позы/пресета/анимации!
-                        MMorphFixPlugin.InstanceLogger.LogInfo($"[ЗАМЕР ОГНЕЙ] {lightObj.name} зафиксировал изменения! Исходная intensity: {light.intensity}");
-
-                        light.intensity = baseIntensity * letItBeDarkMultiplier * hipModifier;
+                        // ЭТА СТРОКА ОБЯЗАНА ВСПЛЫТЬ В КОНСОЛИ ПРИ СМЕНЕ ПОЗЫ / ПРЕСЕТА
+                        MMorphFixPlugin.InstanceLogger.LogInfo($"[ЗАМЕР ОГНЕЙ] {lightObj.name} зафиксирован! Базовая Intensity: {light.intensity}");
                     }
                 }
             }
         }
 
-        private static Transform FindBoneRecursive(Transform parent, string name)
+        /// <summary>
+        /// Умный поиск кости, устойчивый к префиксам вида "Bone/hip" или "Pose/hip"
+        /// </summary>
+        private static Transform FindBoneRecursive(Transform parent, string targetName)
         {
-            if (parent.name.Equals(name, StringComparison.OrdinalIgnoreCase)) return parent;
+            // Проверяем, оканчивается ли имя объекта на нужную нам кость (например, "Bone/hip" оканчивается на "hip")
+            if (parent.name.Equals(targetName, StringComparison.OrdinalIgnoreCase) ||
+                parent.name.EndsWith("/" + targetName, StringComparison.OrdinalIgnoreCase) ||
+                parent.name.EndsWith("_" + targetName, StringComparison.OrdinalIgnoreCase))
+            {
+                return parent;
+            }
+
             for (int i = 0; i < parent.childCount; i++)
             {
-                Transform result = FindBoneRecursive(parent.GetChild(i), name);
+                Transform result = FindBoneRecursive(parent.GetChild(i), targetName);
                 if (result != null) return result;
             }
             return null;
-        }
-
-        public static void ResetCache()
-        {
-            _cachedLightGroup = null;
-            _cachedHip = null;
-            _cachedCharacterId = 0;
-            _lastTrackedScale = Vector3.one;
-            _lastLetItBeDarkMultiplier = -1f;
         }
     }
 }
