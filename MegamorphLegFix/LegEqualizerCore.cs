@@ -57,11 +57,27 @@ namespace MMorphFix
             if (isMainPlayer)
                 _pelvisTelemetry = $"[ТАЗ] pelvis scale: {MegamorphMathCore.SanitizeVector(pelvis.localScale).ToString("F2")}";
 
-            // --- ШАГ 0: ЧИТАЕМ ЧИСТЫЕ ПОЛЗУНКИ ИЗ ПАМЯТИ МЕГАМОРФА ---
+            // --- ШАГ 0: АНАТОМИЧЕСКИЙ КАСКАД ИЗ ПАМЯТИ МЕГАМОРФА (БЕЗ ТАЗА) ---
+            // Читаем чистые дельты ползунков Мегаморфа для ПРЯМОЙ ноги
+            Vector3 dLThighBend = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighBend_scale");
+            Vector3 dLThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "lThighTwist_scale");
             Vector3 dLShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "lShin_scale");
             Vector3 dLFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "lFoot_scale");
+
+            // Накапливаем эталонный объем в оперативной памяти: Бедро × Твист × Голень
+            Vector3 idealLThighTwistAccumulated = Vector3.Scale(dLThighBend, dLThighTwist);
+            Vector3 idealLShinWithParent = Vector3.Scale(idealLThighTwistAccumulated, dLShin);
+            Vector3 idealLFootWithParent = Vector3.Scale(idealLShinWithParent, dLFoot);
+
+            // Точно так же для правой ноги
+            Vector3 dRThighBend = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighBend_scale");
+            Vector3 dRThighTwist = MegamorphMathCore.GetMegamorphScale(megaMorph, "rThighTwist_scale");
             Vector3 dRShin = MegamorphMathCore.GetMegamorphScale(megaMorph, "rShin_scale");
             Vector3 dRFoot = MegamorphMathCore.GetMegamorphScale(megaMorph, "rFoot_scale");
+
+            Vector3 idealRThighTwistAccumulated = Vector3.Scale(dRThighBend, dRThighTwist);
+            Vector3 idealRShinWithParent = Vector3.Scale(idealRThighTwistAccumulated, dRShin);
+            Vector3 idealRFootWithParent = Vector3.Scale(idealRShinWithParent, dRFoot);
 
             bool processOk = false;
 
@@ -77,11 +93,10 @@ namespace MMorphFix
             {
                 Transform lParent = lThighTwist != null ? lThighTwist : lThighBend;
 
-                // СТРОИМ СИММЕТРИЧНЫЕ ЧИСЛИТЕЛИ НА БАЗЕ ЖИВЫХ МАСШТАБОВ
-                Vector3 idealLShinWithParent = Vector3.Scale(lParent.localScale, dLShin);
-                Vector3 idealLFootWithParent = Vector3.Scale(lShin.localScale, dLFoot);
+                // Промежуточный твист не гнется, накатываем на него чистый эталон
+                if (lThighTwist != null) lThighTwist.localScale = dLThighTwist;
 
-                // ЗАПУСКАЕМ МАТРИЧНЫЙ ЩИТ КОЛЕНА И СТОПЫ
+                // Защищаем колени и стопы, деля изолированный виртуальный объем на живую матрицу сцены
                 MegamorphMathCore.ProtectJoint(lShin, idealLShinWithParent, lParent);
                 MegamorphMathCore.ProtectJoint(lFoot, idealLFootWithParent, lShin);
 
@@ -99,8 +114,7 @@ namespace MMorphFix
             {
                 Transform rParent = rThighTwist != null ? rThighTwist : rThighBend;
 
-                Vector3 idealRShinWithParent = Vector3.Scale(rParent.localScale, dRShin);
-                Vector3 idealRFootWithParent = Vector3.Scale(rShin.localScale, dRFoot);
+                if (rThighTwist != null) rThighTwist.localScale = dRThighTwist;
 
                 MegamorphMathCore.ProtectJoint(rShin, idealRShinWithParent, rParent);
                 MegamorphMathCore.ProtectJoint(rFoot, idealRFootWithParent, rShin);
@@ -150,26 +164,23 @@ namespace MMorphFix
                             if (fPelvis != null && fLThighBend != null && fLShin != null && fLFoot != null)
                             {
                                 Transform flParent = fLThighTwist != null ? fLThighTwist : fLThighBend;
+                                if (fLThighTwist != null) fLThighTwist.localScale = dLThighTwist;
 
-                                Vector3 idealFLShinWithParent = Vector3.Scale(flParent.localScale, dLShin);
-                                Vector3 idealFLFootWithParent = Vector3.Scale(fLShin.localScale, dLFoot);
-
-                                MegamorphMathCore.ProtectJoint(fLShin, idealFLShinWithParent, flParent);
-                                MegamorphMathCore.ProtectJoint(fLFoot, idealFLFootWithParent, fLShin);
+                                MegamorphMathCore.ProtectJoint(fLShin, idealLShinWithParent, flParent);
+                                MegamorphMathCore.ProtectJoint(fLFoot, idealLFootWithParent, fLShin);
 
                                 if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, dLShin, dLFoot);
                             }
 
                             // Лечим правые фантомы на экране FreePose
+                            // Лечим правые фантомы на экране FreePose
                             if (fPelvis != null && fRThighBend != null && fRShin != null && fRFoot != null)
                             {
                                 Transform frParent = fRThighTwist != null ? fRThighTwist : fRThighBend;
+                                if (fRThighTwist != null) fRThighTwist.localScale = dRThighTwist;
 
-                                Vector3 idealFRShinWithParent = Vector3.Scale(frParent.localScale, dRShin);
-                                Vector3 idealFRFootWithParent = Vector3.Scale(fRShin.localScale, dRFoot);
-
-                                MegamorphMathCore.ProtectJoint(fRShin, idealFRShinWithParent, frParent);
-                                MegamorphMathCore.ProtectJoint(fRFoot, idealFRFootWithParent, fRShin);
+                                MegamorphMathCore.ProtectJoint(fRShin, idealRShinWithParent, frParent);
+                                MegamorphMathCore.ProtectJoint(fRFoot, idealRFootWithParent, fRShin);
 
                                 if (isMainPlayer) UpdateLegTelemetry("ПРАВАЯ", fRThighBend, fRShin, fRFoot, dRShin, dRFoot);
                             }
@@ -181,8 +192,6 @@ namespace MMorphFix
             if (isMainPlayer && processOk)
             {
                 MMorphFixPlugin.FixExecutionCalls++;
-                MMorphFixPlugin.FixExecutionCalls++;
-                // На радар выводится честный источник вызова (source)
                 MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Щит активен [{source}]";
             }
         }
