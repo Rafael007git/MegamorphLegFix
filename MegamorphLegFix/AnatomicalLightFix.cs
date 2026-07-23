@@ -6,7 +6,7 @@ namespace MMorphFix
 {
     public static class AnatomicalLightFix
     {
-        // Переменные для вывода на ваш UI-радар (прочитайте их в вашем OnGUI)
+        // Переменные для вывода на ваш UI-радар
         public static float Radar_HipScaleY = 1.0f;
         public static float Radar_HipLossyScaleY = 1.0f;
         public static float Radar_Light1_Intensity = 0.0f;
@@ -17,40 +17,74 @@ namespace MMorphFix
         private static System.Reflection.FieldInfo _letItBeDarkField = null;
         private static bool _reflectionChecked = false;
 
-        public static void MonitorAndExecute(GameObject characterRoot)
+        /// <summary>
+        /// Универсальный поисковик активного персонажа, устойчивый к клонам во FreePose.
+        /// </summary>
+        public static void MonitorAndExecute(GameObject fallBackRoot)
         {
-            if (characterRoot == null)
+            // ШАГ 1: Вместо переданного корня мы ищем ВСЕ CharacterCustomization на сцене.
+            // Во FreePose один из них будет активным клоном, перед которым стоит камера.
+            CharacterCustomization activeCC = null;
+            var allCCs = UnityEngine.Object.FindObjectsOfType<CharacterCustomization>();
+
+            if (allCCs != null && allCCs.Length > 0)
             {
-                Radar_Status = "Нет корня персонажа";
+                foreach (var cc in allCCs)
+                {
+                    // Ищем тот объект, который активен в иерархии Unity прямо сейчас
+                    if (cc != null && cc.gameObject != null && cc.gameObject.activeInHierarchy)
+                    {
+                        activeCC = cc;
+                        break;
+                    }
+                }
+            }
+
+            // Если не нашли активный скрипт на сцене, берем то, что передала корутина
+            GameObject targetRoot = (activeCC != null) ? activeCC.gameObject : fallBackRoot;
+
+            if (targetRoot == null)
+            {
+                Radar_Status = "Ошибка: Персонаж не найден на сцене";
                 return;
             }
 
-            // ТЕСТОВЫЙ РЕЖИМ: Полностью отключаем кэш! 
-            // Ищем кость hip заново каждый кадр, чтобы поймать подмену костей во FreePose
-            Transform activeHip = FindBoneRecursive(characterRoot.transform, "hip");
+            // ШАГ 2: Ищем кость "hip" во всем дереве активного персонажа
+            Transform activeHip = FindBoneRecursive(targetRoot.transform, "hip");
 
             if (activeHip == null)
             {
-                Radar_Status = "Кость 'hip' не найдена";
+                // На случай если кодовое имя совсем другое, ищем просто по слову "hip" внутри
+                activeHip = FindBoneContainsRecursive(targetRoot.transform, "hip");
+            }
+
+            if (activeHip == null)
+            {
+                Radar_Status = $"Hip не найден в объекте: {targetRoot.name}";
                 return;
             }
 
-            // Записываем масштаб активной кости для радара
+            // ШАГ 3: Записываем масштабы в реальном времени для нашего радара
             Radar_HipScaleY = activeHip.localScale.y;
             Radar_HipLossyScaleY = activeHip.lossyScale.y;
 
-            // Ищем группу огоньков рекурсивно, так как гизмо во FreePose может менять иерархию пути
+            // ШАГ 4: Находим группу источников света
             Transform activeLightGroup = FindBoneRecursive(activeHip, "character light group");
+            if (activeLightGroup == null)
+            {
+                // Пробуем прямой путь, если рекурсия не сработала
+                activeLightGroup = activeHip.Find("abdomenLower/abdomenUpper/chestLower/character light group");
+            }
 
             if (activeLightGroup == null)
             {
-                Radar_Status = "Группа огней не найдена в hip";
+                Radar_Status = $"Огни не найдены в {activeHip.name} ({targetRoot.name})";
                 return;
             }
 
-            Radar_Status = "Фикс Активен (Огни найдены)";
+            Radar_Status = $"СВЕТ НАЙДЕН! Цель: {targetRoot.name}";
 
-            // Быстрый поиск Let It Be Dark
+            // Чтение Let It Be Dark
             if (!_reflectionChecked)
             {
                 _reflectionChecked = true;
@@ -71,8 +105,9 @@ namespace MMorphFix
                 catch { letItBeDarkMultiplier = 1.0f; }
             }
 
-            // Масштаб сжатия кости hip
-            float hipModifier = (float.IsNaN(Radar_HipScaleY) || float.IsInfinity(Radar_HipScaleY) || Mathf.Abs(Radar_HipScaleY) < 0.01f) ? 1.0f : Radar_HipScaleY;
+            // Фикс света на основе ГЛОБАЛЬНОГО масштаба персонажа (спасет, если гизмо крутит родительский меш)
+            // Мы берем lossyScale.y, так как он учитывает сжатие всей цепочки от самого верха
+            float hipModifier = (float.IsNaN(Radar_HipLossyScaleY) || float.IsInfinity(Radar_HipLossyScaleY) || Mathf.Abs(Radar_HipLossyScaleY) < 0.01f) ? 1.0f : Radar_HipLossyScaleY;
 
             // Применяем формулу произведения
             for (int i = 0; i < activeLightGroup.childCount; i++)
@@ -94,10 +129,9 @@ namespace MMorphFix
                     else
                         continue;
 
-                    // Устанавливаем итоговую интенсивность
                     light.intensity = baseIntensity * letItBeDarkMultiplier * hipModifier;
 
-                    // Записываем РЕАЛЬНОЕ значение яркости лампочки из движка Unity прямо на радар
+                    // Запись значений на радар
                     if (name.Equals("Point Light (1)", StringComparison.OrdinalIgnoreCase))
                         Radar_Light1_Intensity = light.intensity;
                     else if (name.Equals("Point Light (5)", StringComparison.OrdinalIgnoreCase))
@@ -116,10 +150,23 @@ namespace MMorphFix
             {
                 return parent;
             }
-
             for (int i = 0; i < parent.childCount; i++)
             {
                 Transform result = FindBoneRecursive(parent.GetChild(i), targetName);
+                if (result != null) return result;
+            }
+            return null;
+        }
+
+        private static Transform FindBoneContainsRecursive(Transform parent, string partialName)
+        {
+            if (parent.name.IndexOf(partialName, StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return parent;
+            }
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform result = FindBoneContainsRecursive(parent.GetChild(i), partialName);
                 if (result != null) return result;
             }
             return null;
