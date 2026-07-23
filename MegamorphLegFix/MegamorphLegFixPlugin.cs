@@ -239,15 +239,9 @@ namespace MMorphFix
 
             if (cc != null)
             {
-                // Наносим финальный матричный удар, когда кости уже никто не сможет перезаписать
+                // Наносим финальный матричный удар по деформации голеней, 
+                // когда кости уже никто не сможет перезаписать в текущем кадре
                 LegEqualizerCore.ExecuteFix(cc, "КОНЕЦ_КАДРА_МЕБЕЛЬ");
-
-                // 👇 ВНЕДРЯЕМ СЮДА
-                // Передаем корневой GameObject персонажа для независимого и легкого контроля огоньков
-                if (cc.gameObject != null)
-                {
-                    AnatomicalLightFix.MonitorAndExecute(cc.gameObject);
-                }
             }
         }
     }
@@ -291,4 +285,40 @@ namespace MMorphFix
             }
         }
     }
+
+    // ХУК 1: Ловит Мегаморф, пресеты внешности, одежду и смену поз
+    [HarmonyPatch(typeof(CharacterCustomization), "BuildCharacter")] // Укажите имя вашего основного метода ног
+    public static class МегаморфRefreshPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(CharacterCustomization __instance)
+        {
+            if (__instance != null && __instance.gameObject != null)
+            {
+                AnatomicalLightFix.ExecuteFix(__instance.gameObject);
+            }
+        }
+    }
+
+    // ХУК 2: Ловит гизмо FreePose из PDF (срабатывает СТРОГО в момент, когда игрок отпустил мышку!)
+    [HarmonyPatch(typeof(RuntimeGizmos.TransformGizmo), "TransformSelected")]
+    public static class FreePoseGizmoPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix(RuntimeGizmos.TransformGizmo __instance)
+        {
+            // Берем главного персонажа, которого крутило гизмо прямо сейчас (из строки 81 вашего PDF)
+            if (__instance != null && __instance.mainTargetRoot != null)
+            {
+                // Находим корневой GameObject персонажа, к кости которого привязано гизмо
+                CharacterCustomization cc = __instance.mainTargetRoot.GetComponentInParent<CharacterCustomization>();
+                if (cc != null && cc.gameObject != null)
+                {
+                    // Обновляем свет ровно один раз по факту изменения позы гизмо!
+                    AnatomicalLightFix.ExecuteFix(cc.gameObject);
+                }
+            }
+        }
+    }
+
 }
