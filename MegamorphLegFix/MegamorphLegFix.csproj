@@ -80,6 +80,7 @@
     <Compile Include="LegEqualizerCore.cs" />
     <Compile Include="MegamorphLegFixPlugin.cs" />
     <Compile Include="MegamorphMathCore.cs" />
+    <Compile Include="ModConfigManager.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

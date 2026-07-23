@@ -22,6 +22,10 @@ namespace MMorphFix
         private void Awake()
         {
             InstanceLogger = Logger;
+
+            // 👇 ИНИЦИАЛИЗАЦИЯ НАСТРОЕК: Передаем встроенный объект Config в наш новый менеджер
+            ModConfigManager.Initialize(Config);
+
             InstanceLogger.LogInfo("=== [LegFix] Запуск каскадного щита 6 суставов (v0.7.5) ===");
 
             var harmony = new Harmony("com.lorifel007.megamorphlegfix");

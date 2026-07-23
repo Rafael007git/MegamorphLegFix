@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using UnityEngine;
 using HarmonyLib;
 
@@ -7,56 +6,49 @@ namespace MMorphFix
 {
     public static class AnatomicalLightFix
     {
-        private static readonly Dictionary<string, float> _referenceIntensities = new Dictionary<string, float>(StringComparer.OrdinalIgnoreCase)
-        {
-            { "Point Light (1)", 2.5f },
-            { "Point Light (5)", 2.5f },
-            { "Point Light (6)", 2.5f }
-        };
-
-        private static Vector3 _lastTrackedScale = Vector3.one;
-        private static float _lastLetItBeDarkMultiplier = -1f;
-
+        // Кэш ссылок на компоненты конкретного персонажа
         private static Transform _cachedHip = null;
         private static Transform _cachedLightGroup = null;
         private static int _cachedCharacterId = 0;
+
+        // Кэш Reflection для мода Let It Be Dark
         private static System.Reflection.FieldInfo _letItBeDarkField = null;
         private static bool _reflectionChecked = false;
 
+        /// <summary>
+        /// Основной метод коррекции скелетного освещения. 
+        /// Вызывается в конце кадра из RunFixAtEndOfFrame.
+        /// </summary>
         public static void MonitorAndExecute(GameObject characterRoot)
         {
             if (characterRoot == null) return;
 
             int currentId = characterRoot.GetInstanceID();
 
+            // 1. Инициализируем или обновляем кэш ссылок при смене персонажа на сцене
             if (_cachedCharacterId != currentId || _cachedHip == null || _cachedLightGroup == null)
             {
                 _cachedCharacterId = currentId;
 
-                // УЛУЧШЕННЫЙ ПОИСК: ищем кость hip, даже если она называется "Bone/hip"
+                // Умный поиск кости hip (устойчивый к префиксам вида "Bone/hip")
                 _cachedHip = FindBoneRecursive(characterRoot.transform, "hip");
 
                 if (_cachedHip != null)
                 {
-                    // Пробуем найти группу по вашему пути
+                    // Пробуем найти группу по прямому пути
                     _cachedLightGroup = _cachedHip.Find("abdomenLower/abdomenUpper/chestLower/character light group");
 
-                    // Защита: если путь изменился из-за префикса "Bone/", ищем группу рекурсивно внутри hip
+                    // Защитный fallback: если путь сбился, ищем группу рекурсивно внутри hip
                     if (_cachedLightGroup == null)
                     {
                         _cachedLightGroup = FindBoneRecursive(_cachedHip, "character light group");
                     }
                 }
-                else
-                {
-                    // Глубокий отладочный лог: пишется только один раз при спавне, если скелет вообще не распознан
-                    MMorphFixPlugin.InstanceLogger.LogWarning($"[LegFix-Light] Не удалось найти кость 'hip' в корне {characterRoot.name}");
-                }
             }
 
             if (_cachedHip == null || _cachedLightGroup == null) return;
 
-            // Опрос Let It Be Dark
+            // 2. КЭШ РЕФЛЕКСИИ: Ищем поле мода Let It Be Dark строго один раз за весь запуск игры
             if (!_reflectionChecked)
             {
                 _reflectionChecked = true;
@@ -65,52 +57,72 @@ namespace MMorphFix
                     Type letItBeDarkClass = AccessTools.TypeByName("LetItBeDark.LetItBeDarkPlugin")
                                          ?? AccessTools.TypeByName("LetItBeDarkPlugin");
                     if (letItBeDarkClass != null)
+                    {
                         _letItBeDarkField = AccessTools.Field(letItBeDarkClass, "GlobalLightMultiplier");
+                    }
                 }
-                catch { _letItBeDarkField = null; }
+                catch
+                {
+                    _letItBeDarkField = null;
+                }
             }
 
+            // Динамически вытягиваем множитель темноты за наносекунды
             float letItBeDarkMultiplier = 1.0f;
             if (_letItBeDarkField != null)
             {
-                try { letItBeDarkMultiplier = (float)_letItBeDarkField.GetValue(null); }
-                catch { letItBeDarkMultiplier = 1.0f; }
+                try
+                {
+                    letItBeDarkMultiplier = (float)_letItBeDarkField.GetValue(null);
+                }
+                catch
+                {
+                    letItBeDarkMultiplier = 1.0f;
+                }
             }
 
-            Vector3 currentScale = _cachedHip.localScale;
-            if (currentScale == _lastTrackedScale && Mathf.Approximately(letItBeDarkMultiplier, _lastLetItBeDarkMultiplier))
+            // 3. Рассчитываем коэффициент усадки на основе вертикального масштаба кости hip
+            float hipModifier = 1.0f;
+            if (ModConfigManager.IsFixEnabled)
             {
-                return;
+                float yScale = _cachedHip.localScale.y;
+                // Защита от NaN, бесконечности и деления на критически малые величины
+                hipModifier = (float.IsNaN(yScale) || float.IsInfinity(yScale) || Mathf.Abs(yScale) < 0.01f) ? 1.0f : yScale;
             }
 
-            _lastTrackedScale = currentScale;
-            _lastLetItBeDarkMultiplier = letItBeDarkMultiplier;
-
-            float yScale = currentScale.y;
-            float hipModifier = (float.IsNaN(yScale) || float.IsInfinity(yScale) || Mathf.Abs(yScale) < 0.01f) ? 1.0f : yScale;
-
-            // Применяем формулу и выводим заветный замер
+            // 4. Применяем формулу произведения к огонькам, забирая базы из ModConfigManager (меню F1)
             for (int i = 0; i < _cachedLightGroup.childCount; i++)
             {
                 Transform lightObj = _cachedLightGroup.GetChild(i);
-                if (_referenceIntensities.ContainsKey(lightObj.name))
+                Light light = lightObj.GetComponent<Light>();
+
+                if (light != null && light.type == LightType.Point)
                 {
-                    Light light = lightObj.GetComponent<Light>();
-                    if (light != null && light.type == LightType.Point)
-                    {
-                        // ЭТА СТРОКА ОБЯЗАНА ВСПЛЫТЬ В КОНСОЛИ ПРИ СМЕНЕ ПОЗЫ / ПРЕСЕТА
-                        MMorphFixPlugin.InstanceLogger.LogInfo($"[ЗАМЕР ОГНЕЙ] {lightObj.name} зафиксирован! Базовая Intensity: {light.intensity}");
-                    }
+                    float baseIntensity = 1.0f;
+                    string name = lightObj.name;
+
+                    // Связываем каждый огонек со своим персональным ползунком в конфиге мода
+                    if (name.Equals("Point Light (1)", StringComparison.OrdinalIgnoreCase))
+                        baseIntensity = ModConfigManager.Light1Intensity;
+                    else if (name.Equals("Point Light (5)", StringComparison.OrdinalIgnoreCase))
+                        baseIntensity = ModConfigManager.Light5Intensity;
+                    else if (name.Equals("Point Light (6)", StringComparison.OrdinalIgnoreCase))
+                        baseIntensity = ModConfigManager.Light6Intensity;
+                    else
+                        continue; // Игнорируем сторонние объекты в группе, если они есть
+
+                    // МАТЕМАТИЧЕСКАЯ СИНЕРГИЯ: [Ползунок F1] * [Интерьерный мод] * [Масштаб тела]
+                    // Спам в лог полностью убран, процессор крутит чистые регистры
+                    light.intensity = baseIntensity * letItBeDarkMultiplier * hipModifier;
                 }
             }
         }
 
         /// <summary>
-        /// Умный поиск кости, устойчивый к префиксам вида "Bone/hip" или "Pose/hip"
+        /// Рекурсивный поиск костей, устойчивый к иерархическим префиксам движка (например, "Bone/hip")
         /// </summary>
         private static Transform FindBoneRecursive(Transform parent, string targetName)
         {
-            // Проверяем, оканчивается ли имя объекта на нужную нам кость (например, "Bone/hip" оканчивается на "hip")
             if (parent.name.Equals(targetName, StringComparison.OrdinalIgnoreCase) ||
                 parent.name.EndsWith("/" + targetName, StringComparison.OrdinalIgnoreCase) ||
                 parent.name.EndsWith("_" + targetName, StringComparison.OrdinalIgnoreCase))
@@ -124,6 +136,16 @@ namespace MMorphFix
                 if (result != null) return result;
             }
             return null;
+        }
+
+        /// <summary>
+        /// Сброс кэша ссылок (полезно вызывать при полной очистке сцены или смене локации)
+        /// </summary>
+        public static void ResetCache()
+        {
+            _cachedLightGroup = null;
+            _cachedHip = null;
+            _cachedCharacterId = 0;
         }
     }
 }
