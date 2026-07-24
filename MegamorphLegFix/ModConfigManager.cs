@@ -52,6 +52,32 @@ namespace MMorphFix
                 620.0f, // Заводской дефолт из логов
                 new ConfigDescription("Базовая яркость шестого источника света персонажа.", new AcceptableValueRange<float>(0f, 1000f))
             );
+
+            // ДОБАВЛЯЕМ ПОДПИСКУ НА ИЗМЕНЕНИЕ ПОЛЗУНКОВ В КОНЦЕ МЕТОДА:
+            _light1IntensityConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
+            _light5IntensityConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
+            _light6IntensityConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
+            _isFixEnabledConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
         }
+
+        /// <summary>
+        /// Находит всех активных персонажей на сцене и мгновенно обновляет им свет при сдвиге ползунка в F1.
+        /// </summary>
+        private static void TriggerLightsUpdate()
+        {
+            // Находим главного героя и всех компаньонок, которые сейчас активны на экране
+            var allCharacters = UnityEngine.Object.FindObjectsOfType<CharacterCustomization>();
+            if (allCharacters == null || allCharacters.Length == 0) return;
+
+            foreach (var cc in allCharacters)
+            {
+                if (cc != null && cc.gameObject != null && cc.gameObject.activeInHierarchy)
+                {
+                    // Точечно пинаем фикс света ровно 1 раз по факту клика в меню!
+                    AnatomicalLightFix.ExecuteFix(cc.gameObject);
+                }
+            }
+        }
+
     }
 }
