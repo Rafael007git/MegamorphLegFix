@@ -12,7 +12,7 @@ namespace MMorphFix
         public static float Radar_Light1_Intensity = 0.0f;
         public static float Radar_Light5_Intensity = 0.0f;
         public static float Radar_Light6_Intensity = 0.0f;
-        public static string Radar_Status = "Ожидание изменений...";
+        public static string Radar_Status = "Awaiting changes...";
 
         // Статические поля для кэширования Reflection мода Let It Be Dark
         private static System.Reflection.FieldInfo _letItBeDarkField = null;
@@ -26,7 +26,7 @@ namespace MMorphFix
         {
             if (characterRoot == null)
             {
-                Radar_Status = "Нет корня персонажа";
+                Radar_Status = "No character root found";
                 return;
             }
 
@@ -34,7 +34,7 @@ namespace MMorphFix
             Transform hip = FindBoneRecursive(characterRoot.transform, "hip");
             if (hip == null)
             {
-                Radar_Status = $"Кость hip не найдена в {characterRoot.name}";
+                Radar_Status = $"Hip bone not found in {characterRoot.name}";
                 return;
             }
 
@@ -42,12 +42,12 @@ namespace MMorphFix
             Transform lightGroup = FindBoneRecursive(hip, "character light group");
             if (lightGroup == null)
             {
-                Radar_Status = $"character light group не найдена в {hip.name}";
+                Radar_Status = $"Light group not found in {hip.name}";
                 return;
             }
 
             // Пишем статус успеха на радар
-            Radar_Status = $"СВЕТ ОБНОВЛЕН! Цель: {characterRoot.name}";
+            Radar_Status = $"LIGHTS UPDATED! Target: {characterRoot.name}";
 
             // Обновляем масштабы для радара
             Radar_HipScaleY = hip.localScale.y;

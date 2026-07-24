@@ -188,10 +188,10 @@ namespace MMorphFix
         {
             string telemetry =
                 $"[{side} НОГА ИГРОКА]\n" +
-                $" -> Thigh (Бедро) scale: {MegamorphMathCore.SanitizeVector(thigh.localScale).ToString("F2")}\n" +
-                $" -> Shin  (Голень) scale: {shin.localScale.ToString("F2")} (Конфиг: {configShin.ToString("F2")})\n" +
-                $" -> Foot  (Стопа)  scale: {foot.localScale.ToString("F2")} (Конфиг: {configFoot.ToString("F2")})\n" +
-                $" -> Угол вращения сустава: {shin.localRotation.eulerAngles.ToString("F0")}°";
+                $" -> Thigh scale: {MegamorphMathCore.SanitizeVector(thigh.localScale).ToString("F2")}\n" +
+                $" -> Shin scale: {shin.localScale.ToString("F2")} (Конфиг: {configShin.ToString("F2")})\n" +
+                $" -> Foot scale: {foot.localScale.ToString("F2")} (Конфиг: {configFoot.ToString("F2")})\n" +
+                $" -> Joint rotation angle: {shin.localRotation.eulerAngles.ToString("F0")}°";
 
             if (side == "ЛЕВАЯ") MMorphFixPlugin.LeftLegTelemetry = telemetry;
             else MMorphFixPlugin.RightLegTelemetry = telemetry;

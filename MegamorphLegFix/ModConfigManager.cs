@@ -25,42 +25,41 @@ namespace MMorphFix
         /// </summary>
         public static void Initialize(ConfigFile config)
         {
-            // 1. Основные настройки
+            // 1. Main Settings
             _isFixEnabledConfig = config.Bind(
-                "1. Основные настройки",
-                "Включить Матричную Компенсацию",
+                "1. General Settings",
+                "Enable Matrix Compensation",
                 true,
-                "Автоматически исправляет деформацию ног и скелетного освещения при изменении пропорций тела."
+                "Automatically fixes leg deformation and skeletal lighting anomalies when changing body proportions."
             );
 
-            // 👇 РЕГИСТРИРУЕМ ЧЕКБОКС В МЕНЮ F1: По умолчанию выключен (false) для чистого релиза
             _showRadarConfig = config.Bind(
-                "1. Основные настройки",
-                "Показывать отладочный радар",
+                "1. General Settings",
+                "Show Debug Radar",
                 false,
-                "Отображает на экране инженерную панель телеметрии костей ног и суставных огоньков."
+                "Displays the real-time engineering telemetry panel for leg bones and skeletal lights on your screen."
             );
 
-            // 2. Настройка скелетных огней
+            // 2. Skeletal Lights Adjustment
             _light1IntensityConfig = config.Bind(
-                "2. Настройка скелетных огней",
-                "Интенсивность Point Light (1)",
+                "2. Skeletal Lights Settings",
+                "Point Light (1) Intensity",
                 122.0f,
-                new ConfigDescription("Базовая яркость первого источника света персонажа.", new AcceptableValueRange<float>(0f, 1000f))
+                new ConfigDescription("Base brightness of the first character skeletal light source.", new AcceptableValueRange<float>(0f, 1000f))
             );
 
             _light5IntensityConfig = config.Bind(
-                "2. Настройка скелетных огней",
-                "Интенсивность Point Light (5)",
+                "2. Skeletal Lights Settings",
+                "Point Light (5) Intensity",
                 472.0f,
-                new ConfigDescription("Базовая яркость пятого источника света персонажа.", new AcceptableValueRange<float>(0f, 1000f))
+                new ConfigDescription("Base brightness of the fifth character skeletal light source.", new AcceptableValueRange<float>(0f, 1000f))
             );
 
             _light6IntensityConfig = config.Bind(
-                "2. Настройка скелетных огней",
-                "Интенсивность Point Light (6)",
+                "2. Skeletal Lights Settings",
+                "Point Light (6) Intensity",
                 620.0f,
-                new ConfigDescription("Базовая яркость шестого источника света персонажа.", new AcceptableValueRange<float>(0f, 1000f))
+                new ConfigDescription("Base brightness of the sixth character skeletal light source.", new AcceptableValueRange<float>(0f, 1000f))
             );
 
             // Подписка на события ползунков (свет)

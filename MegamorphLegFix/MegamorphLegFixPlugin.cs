@@ -104,7 +104,7 @@ namespace MMorphFix
             if (!ModConfigManager.ShowRadar) return;
 
             // Увеличиваем высоту окна до 450, чтобы влез диагностический блок света
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 450), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.8.2 + LightFix Test)");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 450), "Leg and Light Fix REALTIME DIAGNOSTIC (v 1.1.0)");
 
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
@@ -115,46 +115,46 @@ namespace MMorphFix
             labelStyle.normal.textColor = UnityEngine.Color.green;
 
             // КНОПКА 1: Переключение состояния матричного щита (слева)
-            string buttonShieldText = IsFixEnabled ? "❌ ОТКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ" : "✅ ВКЛЮЧИТЬ МАТРИЧНЫЙ ЩИТ";
+            string buttonShieldText = IsFixEnabled ? "❌ DISABLE MATRIX FIX" : "✅ ENABLE MATRIX FIX";
             if (UnityEngine.GUI.Button(new UnityEngine.Rect(20, 35, 250, 25), buttonShieldText))
             {
                 IsFixEnabled = !IsFixEnabled;
                 if (InstanceLogger != null)
                 {
-                    InstanceLogger.LogInfo($"[LegFix] Переключено состояние щита. Активен: {IsFixEnabled}");
+                    InstanceLogger.LogInfo($"[LegFix] State toggled. Currently: {IsFixEnabled}");
                 }
             }
 
             // КНОПКА 2: Копирование телеметрии в буфер обмена Windows
-            if (UnityEngine.GUI.Button(new UnityEngine.Rect(280, 35, 180, 25), "📋 СКОПИРОВАТЬ ДАННЫЕ"))
+            if (UnityEngine.GUI.Button(new UnityEngine.Rect(280, 35, 180, 25), "📋 COPY TELEMETRY DATA"))
             {
                 string textToCopy =
-                    $"=== [MegamorphLegFix ТЕЛЕМЕТРИЯ] ===\n" +
-                    $"Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
-                    $"Режим защиты: {(IsFixEnabled ? "АКТИВЕН" : "ВЫКЛЮЧЕН")}\n" +
-                    $"Персонаж: {LastFoundCharacter}\n" +
-                    $"Статус: {DebugMonitorText}\n" +
+                    $"=== [MegamorphLegFix TELEMETRY] ===\n" +
+                    $"Frames: {TotalFramesCount} | Joint Inversions: {FixExecutionCalls}\n" +
+                    $"Protection mode: {(IsFixEnabled ? "Active" : "Disabled")}\n" +
+                    $"Character: {LastFoundCharacter}\n" +
+                    $"Status: {DebugMonitorText}\n" +
                     $"--------------------------------------------------\n" +
                     $"{LeftLegTelemetry}\n" +
                     $"--------------------------------------------------\n" +
                     $"{RightLegTelemetry}\n" +
-                    $"=== [AnatomicalLightFix ТЕЛЕМЕТРИЯ] ===\n" +
-                    $"Статус огней: {AnatomicalLightFix.Radar_Status}\n" +
-                    $"Scale (Локальный Y): {AnatomicalLightFix.Radar_HipScaleY:F4}\n" +
-                    $"Scale (Глобальный Y): {AnatomicalLightFix.Radar_HipLossyScaleY:F4}\n" +
+                    $"=== [AnatomicalLightFix Telemetry] ===\n" +
+                    $"Lights Status: {AnatomicalLightFix.Radar_Status}\n" +
+                    $"Distance scale: {AnatomicalLightFix.Radar_HipScaleY:F4}\n" +
+                    $"Distance scale: {AnatomicalLightFix.Radar_HipLossyScaleY:F4}\n" +
                     $"Light 1 Intensity: {AnatomicalLightFix.Radar_Light1_Intensity:F2}\n" +
                     $"Light 5 Intensity: {AnatomicalLightFix.Radar_Light5_Intensity:F2}\n" +
                     $"Light 6 Intensity: {AnatomicalLightFix.Radar_Light6_Intensity:F2}\n" +
                     $"====================================";
 
                 UnityEngine.GUIUtility.systemCopyBuffer = textToCopy;
-                DebugMonitorText = "Данные радара успешно скопированы в буфер обмена!";
+                DebugMonitorText = "Radar telemetry successfully copied to clipboard!";
             }
 
             // Базовый статус ног
             string systemStatus =
-                $"[СИСТЕМА] Кадры: {TotalFramesCount} | Инверсий суставов: {FixExecutionCalls}\n" +
-                $"[РЕЖИМ ЗАЩИТЫ] {(IsFixEnabled ? "АКТИВЕН (Меш защищен)" : "ВЫКЛЮЧЕН (Оригинальный Мегаморф)")}\n" +
+                $"[System] FPS: {TotalFramesCount} | Joint Inversions: {FixExecutionCalls}\n" +
+                $"[Protection Mode] {(IsFixEnabled ? "ACTIVE (Mesh protected)" : "DISABLED (Original MegaMorph)")}\n" +
                 $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter}\n" +
                 $"[СТАТУС] {DebugMonitorText}\n" +
                 $"------------------------------------------------------------------------------------------------------\n" +
@@ -167,10 +167,10 @@ namespace MMorphFix
 
             // СВЕЖИЙ БЛОК: Выводим данные по огонькам в самый низ радара (Rect Y = 320)
             string lightStatusText =
-                $"----------------------------------------------- СУСТАВНЫЕ ОГОНЬКИ (FreePose) -----------------------------------------------\n" +
-                $"[СТАТУС ОГНЕЙ] {AnatomicalLightFix.Radar_Status}\n" +
-                $"[КОСТЬ HIP SCALE] Локальный Y: {AnatomicalLightFix.Radar_HipScaleY:F4}  |  Глобальный (World) Y: {AnatomicalLightFix.Radar_HipLossyScaleY:F4}\n" +
-                $"[ТЕКУЩАЯ ЯРКОСТЬ] Light(1): {AnatomicalLightFix.Radar_Light1_Intensity:F2}  |  Light(5): {AnatomicalLightFix.Radar_Light5_Intensity:F2}  |  Light(6): {AnatomicalLightFix.Radar_Light6_Intensity:F2}";
+                $"----------------------------------------------- SKELETAL LIGHTS (FreePose) -----------------------------------------------\n" +
+                $"[LIGHTS STATUS] {AnatomicalLightFix.Radar_Status}\n" +
+                $"[HIP BONE SCALE] Local Y: {AnatomicalLightFix.Radar_HipScaleY:F4}  |  Global (World) Y: {AnatomicalLightFix.Radar_HipLossyScaleY:F4}\n" +
+                $"[CURRENT INTENSITY] Light(1): {AnatomicalLightFix.Radar_Light1_Intensity:F2}  |  Light(5): {AnatomicalLightFix.Radar_Light5_Intensity:F2}  |  Light(6): {AnatomicalLightFix.Radar_Light6_Intensity:F2}";
 
             // Создаем отдельный стиль для огней (желтый цвет, чтобы визуально отделить блок в интерфейсе)
             UnityEngine.GUIStyle lightLabelStyle = new UnityEngine.GUIStyle(labelStyle);
