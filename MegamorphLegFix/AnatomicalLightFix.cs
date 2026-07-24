@@ -6,7 +6,7 @@ namespace MMorphFix
 {
     public static class AnatomicalLightFix
     {
-        // Переменные для вывода на отладочный UI-радар
+        // Global variables for live telemetry tracking on the UI radar panel
         public static float Radar_HipScaleY = 1.0f;
         public static float Radar_HipLossyScaleY = 1.0f;
         public static float Radar_Light1_Intensity = 0.0f;
@@ -14,13 +14,13 @@ namespace MMorphFix
         public static float Radar_Light6_Intensity = 0.0f;
         public static string Radar_Status = "Awaiting changes...";
 
-        // Статические поля для кэширования Reflection мода Let It Be Dark
+        // Static fields for caching "Let It Be Dark" mod Reflection data
         private static System.Reflection.FieldInfo _letItBeDarkField = null;
         private static bool _reflectionChecked = false;
 
         /// <summary>
-        /// Чистый событийный фикс: вызывается из хуков MegaMorph и Гизмо FreePose.
-        /// Нагрузка в простое — 0%.
+        /// Event-driven lighting fix: triggered by MegaMorph sliders or FreePose gizmo manipulation.
+        /// Automatically scales bone-attached point and spot lights using the inverse-square law.
         /// </summary>
         public static void ExecuteFix(GameObject characterRoot)
         {
@@ -30,7 +30,7 @@ namespace MMorphFix
                 return;
             }
 
-            // Находим настоящую кость hip персонажа
+            // Step 1: Find the true skeletal root bone (resilient to engine prefixes like "Bone/hip")
             Transform hip = FindBoneRecursive(characterRoot.transform, "hip");
             if (hip == null)
             {
@@ -38,28 +38,27 @@ namespace MMorphFix
                 return;
             }
 
-            // Находим группу огоньков
+            // Step 2: Locate the container holding character-specific lighting setup
             Transform lightGroup = FindBoneRecursive(hip, "character light group");
             if (lightGroup == null)
             {
-                Radar_Status = $"Light group not found in {hip.name}";
+                Radar_Status = $"Character light group not found in {hip.name}";
                 return;
             }
 
-            // Пишем статус успеха на радар
+            // Update diagnostic telemetry panel strings
             Radar_Status = $"LIGHTS UPDATED! Target: {characterRoot.name}";
-
-            // Обновляем масштабы для радара
             Radar_HipScaleY = hip.localScale.y;
             Radar_HipLossyScaleY = hip.lossyScale.y;
 
-            // Защита от NaN, бесконечности и критического деления
+            // Step 3: Extract the absolute world-space vertical scale modifier to accurately capture Gizmo shifts
             float hipModifier = (float.IsNaN(Radar_HipLossyScaleY) || float.IsInfinity(Radar_HipLossyScaleY) || Mathf.Abs(Radar_HipLossyScaleY) < 0.01f) ? 1.0f : Radar_HipLossyScaleY;
 
-            // КВАДРАТИЧНЫЙ КОЭФФИЦИЕНТ: Реализация закона обратных квадратов
+            // Step 4: Apply the Inverse-Square Law coefficient. 
+            // As distance scales down, intensity must drop quadratically to maintain constant surface irradiance.
             float quadraticModifier = hipModifier * hipModifier;
 
-            // Мост к Let It Be Dark (поиск класса строго 1 раз за весь запуск игры)
+            // Step 5: Safely fetch the global multiplier from the independent "Let It Be Dark" mod via cached Reflection
             if (!_reflectionChecked)
             {
                 _reflectionChecked = true;
@@ -70,7 +69,10 @@ namespace MMorphFix
                     if (letItBeDarkClass != null)
                         _letItBeDarkField = AccessTools.Field(letItBeDarkClass, "GlobalLightMultiplier");
                 }
-                catch { _letItBeDarkField = null; }
+                catch
+                {
+                    _letItBeDarkField = null;
+                }
             }
 
             float letItBeDarkMultiplier = 1.0f;
@@ -80,37 +82,57 @@ namespace MMorphFix
                 catch { letItBeDarkMultiplier = 1.0f; }
             }
 
-            // Применяем формулу произведения к огонькам
+            // Step 6: Iterate through the light group and re-calculate intensity values for both Point and Spot lights
             for (int i = 0; i < lightGroup.childCount; i++)
             {
                 Transform lightObj = lightGroup.GetChild(i);
                 Light light = lightObj.GetComponent<Light>();
 
-                if (light != null && light.type == LightType.Point)
+                if (light != null)
                 {
-                    float baseIntensity = 1.0f;
                     string name = lightObj.name;
+                    float baseIntensity = 1.0f;
 
-                    if (name.Equals("Point Light (1)", StringComparison.OrdinalIgnoreCase))
-                        baseIntensity = ModConfigManager.Light1Intensity;
-                    else if (name.Equals("Point Light (5)", StringComparison.OrdinalIgnoreCase))
-                        baseIntensity = ModConfigManager.Light5Intensity;
-                    else if (name.Equals("Point Light (6)", StringComparison.OrdinalIgnoreCase))
-                        baseIntensity = ModConfigManager.Light6Intensity;
-                    else
-                        continue;
+                    // CASE A: Standard omnidirectional character skeletal point lights
+                    if (light.type == LightType.Point)
+                    {
+                        // Resilient token-based search protecting against unintended padding or whitespace typos
+                        if (name.IndexOf("1", StringComparison.OrdinalIgnoreCase) >= 0)
+                            baseIntensity = ModConfigManager.Light1Intensity;
+                        else if (name.IndexOf("5", StringComparison.OrdinalIgnoreCase) >= 0)
+                            baseIntensity = ModConfigManager.Light5Intensity;
+                        else if (name.IndexOf("6", StringComparison.OrdinalIgnoreCase) >= 0)
+                            baseIntensity = ModConfigManager.Light6Intensity;
+                        else
+                            continue;
 
-                    // Бесконфликтная физическая интенсивность: [Ползунок F1] * [Let It Be Dark] * [Масштаб^2]
-                    light.intensity = baseIntensity * letItBeDarkMultiplier * quadraticModifier;
+                        // Apply non-destructive product formula combining user preferences, darkness sliders, and physical scale delta
+                        light.intensity = baseIntensity * letItBeDarkMultiplier * quadraticModifier;
 
-                    // Записываем финальные значения яркости лампочек прямо на радар
-                    if (name.Equals("Point Light (1)", StringComparison.OrdinalIgnoreCase)) Radar_Light1_Intensity = light.intensity;
-                    if (name.Equals("Point Light (5)", StringComparison.OrdinalIgnoreCase)) Radar_Light5_Intensity = light.intensity;
-                    if (name.Equals("Point Light (6)", StringComparison.OrdinalIgnoreCase)) Radar_Light6_Intensity = light.intensity;
+                        // Push live telemetry data back to the debug radar
+                        if (name.IndexOf("1", StringComparison.OrdinalIgnoreCase) >= 0) Radar_Light1_Intensity = light.intensity;
+                        if (name.IndexOf("5", StringComparison.OrdinalIgnoreCase) >= 0) Radar_Light5_Intensity = light.intensity;
+                        if (name.IndexOf("6", StringComparison.OrdinalIgnoreCase) >= 0) Radar_Light6_Intensity = light.intensity;
+                    }
+                    // CASE B: Frontal cinematic filling Spot Light attached exclusively to the Player character
+                    else if (light.type == LightType.Spot)
+                    {
+                        // Default game asset fallback intensity for the player's core directional spot light
+                        float spotBaseIntensity = 50.0f;
+
+                        // Perform the same quadratic scaling to prevent the light cone from burning out textures on tiny meshes
+                        light.intensity = spotBaseIntensity * letItBeDarkMultiplier * quadraticModifier;
+
+                        // Append a visual flag to confirm the player spot light interception was successful
+                        Radar_Status = $"LIGHTS + PLAYER SPOT UPDATED! Target: {characterRoot.name}";
+                    }
                 }
             }
         }
 
+        /// <summary>
+        /// Highly resilient recursive bone finder. Handles structural engine prefixes like "Bone/hip" or "Model_hip".
+        /// </summary>
         private static Transform FindBoneRecursive(Transform parent, string targetName)
         {
             if (parent.name.Equals(targetName, StringComparison.OrdinalIgnoreCase) ||
@@ -119,6 +141,7 @@ namespace MMorphFix
             {
                 return parent;
             }
+
             for (int i = 0; i < parent.childCount; i++)
             {
                 Transform result = FindBoneRecursive(parent.GetChild(i), targetName);
