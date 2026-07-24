@@ -157,7 +157,7 @@ namespace MMorphFix
                                 MegamorphMathCore.ProtectJoint(fLShin, dLShin, flParent);
                                 MegamorphMathCore.ProtectJoint(fLFoot, dLFoot, fLShin);
 
-                                if (isMainPlayer) UpdateLegTelemetry("ЛЕВАЯ", fLThighBend, fLShin, fLFoot, dLShin, dLFoot);
+                                if (isMainPlayer) UpdateLegTelemetry("LEFT", fLThighBend, fLShin, fLFoot, dLShin, dLFoot);
                             }
 
                             // Лечим правые фантомы на экране FreePose
@@ -169,7 +169,7 @@ namespace MMorphFix
                                 MegamorphMathCore.ProtectJoint(fRShin, dRShin, frParent);
                                 MegamorphMathCore.ProtectJoint(fRFoot, dRFoot, fRShin);
 
-                                if (isMainPlayer) UpdateLegTelemetry("ПРАВАЯ", fRThighBend, fRShin, fRFoot, dRShin, dRFoot);
+                                if (isMainPlayer) UpdateLegTelemetry("RIGHT", fRThighBend, fRShin, fRFoot, dRShin, dRFoot);
                             }
                         }
                     }
@@ -187,13 +187,14 @@ namespace MMorphFix
         private static void UpdateLegTelemetry(string side, Transform thigh, Transform shin, Transform foot, Vector3 configShin, Vector3 configFoot)
         {
             string telemetry =
-                $"[{side} НОГА ИГРОКА]\n" +
+                $"[{side} LEG TELEMETRY]\n" +
                 $" -> Thigh scale: {MegamorphMathCore.SanitizeVector(thigh.localScale).ToString("F2")}\n" +
                 $" -> Shin scale: {shin.localScale.ToString("F2")} (Конфиг: {configShin.ToString("F2")})\n" +
                 $" -> Foot scale: {foot.localScale.ToString("F2")} (Конфиг: {configFoot.ToString("F2")})\n" +
-                $" -> Joint rotation angle: {shin.localRotation.eulerAngles.ToString("F0")}°";
+                $" -> Knee joint rotation angle: {shin.localRotation.eulerAngles.ToString("F0")}°\n" +
+                $" -> Ankle joint rotation angle: {foot.localRotation.eulerAngles.ToString("F0")}°";
 
-            if (side == "ЛЕВАЯ") MMorphFixPlugin.LeftLegTelemetry = telemetry;
+            if (side == "LEFT") MMorphFixPlugin.LeftLegTelemetry = telemetry;
             else MMorphFixPlugin.RightLegTelemetry = telemetry;
         }
 

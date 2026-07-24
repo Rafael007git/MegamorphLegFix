@@ -144,7 +144,7 @@ namespace MMorphFix
                     $"Distance scale: {AnatomicalLightFix.Radar_HipLossyScaleY:F4}\n" +
                     $"Light 1 Intensity: {AnatomicalLightFix.Radar_Light1_Intensity:F2}\n" +
                     $"Light 5 Intensity: {AnatomicalLightFix.Radar_Light5_Intensity:F2}\n" +
-                    $"Light 6 Intensity: {AnatomicalLightFix.Radar_Light6_Intensity:F2}\n" +
+                    $"Light 9 Intensity: {AnatomicalLightFix.Radar_Light9_Intensity:F2}\n" +
                     $"====================================";
 
                 UnityEngine.GUIUtility.systemCopyBuffer = textToCopy;
@@ -170,7 +170,7 @@ namespace MMorphFix
                 $"----------------------------------------------- SKELETAL LIGHTS (FreePose) -----------------------------------------------\n" +
                 $"[LIGHTS STATUS] {AnatomicalLightFix.Radar_Status}\n" +
                 $"[HIP BONE SCALE] Local Y: {AnatomicalLightFix.Radar_HipScaleY:F4}  |  Global (World) Y: {AnatomicalLightFix.Radar_HipLossyScaleY:F4}\n" +
-                $"[CURRENT INTENSITY] Light(1): {AnatomicalLightFix.Radar_Light1_Intensity:F2}  |  Light(5): {AnatomicalLightFix.Radar_Light5_Intensity:F2}  |  Light(6): {AnatomicalLightFix.Radar_Light6_Intensity:F2}";
+                $"[CURRENT INTENSITY] Light(1): {AnatomicalLightFix.Radar_Light1_Intensity:F2}  |  Light(5): {AnatomicalLightFix.Radar_Light5_Intensity:F2}  |  Light(9): {AnatomicalLightFix.Radar_Light9_Intensity:F2}";
 
             // Создаем отдельный стиль для огней (желтый цвет, чтобы визуально отделить блок в интерфейсе)
             UnityEngine.GUIStyle lightLabelStyle = new UnityEngine.GUIStyle(labelStyle);

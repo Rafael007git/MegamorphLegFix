@@ -4,28 +4,26 @@ namespace MMorphFix
 {
     public static class ModConfigManager
     {
-        // Существующие конфиги
         private static ConfigEntry<bool> _isFixEnabledConfig;
         public static bool IsFixEnabled => _isFixEnabledConfig != null && _isFixEnabledConfig.Value;
 
-        // 👇 НОВЫЙ КОНФИГ: Выключатель UI-радара
         private static ConfigEntry<bool> _showRadarConfig;
         public static bool ShowRadar => _showRadarConfig != null && _showRadarConfig.Value;
 
         private static ConfigEntry<float> _light1IntensityConfig;
         private static ConfigEntry<float> _light5IntensityConfig;
-        private static ConfigEntry<float> _light6IntensityConfig;
+        private static ConfigEntry<float> _light9IntensityConfig; // 👈 Replaced 6 with 9
 
         public static float Light1Intensity => _light1IntensityConfig != null ? _light1IntensityConfig.Value : 122.0f;
         public static float Light5Intensity => _light5IntensityConfig != null ? _light5IntensityConfig.Value : 472.0f;
-        public static float Light6Intensity => _light6IntensityConfig != null ? _light6IntensityConfig.Value : 620.0f;
+        public static float Light9Intensity => _light9IntensityConfig != null ? _light9IntensityConfig.Value : 51.086f; // 👈 Replaced 6 with 9
 
         /// <summary>
-        /// Регистрирует все настройки мода в меню BepInEx Configuration Manager (F1).
+        /// Registers all mod configuration settings within the BepInEx menu (F1).
         /// </summary>
         public static void Initialize(ConfigFile config)
         {
-            // 1. Main Settings
+            // 1. General Settings Group
             _isFixEnabledConfig = config.Bind(
                 "1. General Settings",
                 "Enable Matrix Compensation",
@@ -40,7 +38,7 @@ namespace MMorphFix
                 "Displays the real-time engineering telemetry panel for leg bones and skeletal lights on your screen."
             );
 
-            // 2. Skeletal Lights Adjustment
+            // 2. Skeletal Lights Adjustment Group
             _light1IntensityConfig = config.Bind(
                 "2. Skeletal Lights Settings",
                 "Point Light (1) Intensity",
@@ -55,17 +53,17 @@ namespace MMorphFix
                 new ConfigDescription("Base brightness of the fifth character skeletal light source.", new AcceptableValueRange<float>(0f, 1000f))
             );
 
-            _light6IntensityConfig = config.Bind(
+            _light9IntensityConfig = config.Bind(
                 "2. Skeletal Lights Settings",
-                "Point Light (6) Intensity",
-                620.0f,
-                new ConfigDescription("Base brightness of the sixth character skeletal light source.", new AcceptableValueRange<float>(0f, 1000f))
+                "Point Light (9) Spot Intensity", // 👈 Replaced 6 with 9
+                51.086f,
+                new ConfigDescription("Base brightness of the main character frontal fill spot light.", new AcceptableValueRange<float>(0f, 1000f))
             );
 
-            // Подписка на события ползунков (свет)
+            // Reactive event subscription setup
             _light1IntensityConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
             _light5IntensityConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
-            _light6IntensityConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
+            _light9IntensityConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
             _isFixEnabledConfig.SettingChanged += (sender, args) => TriggerLightsUpdate();
         }
 
