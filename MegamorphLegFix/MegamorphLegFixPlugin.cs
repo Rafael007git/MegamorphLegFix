@@ -100,6 +100,9 @@ namespace MMorphFix
 
         private void OnGUI()
         {
+            // Если радар выключен в меню F1 — ничего не рисуем!
+            if (!ModConfigManager.ShowRadar) return;
+
             // Увеличиваем высоту окна до 450, чтобы влез диагностический блок света
             UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 450), "Leg Fix REALTIME DIAGNOSTIC (Стабильный Билд 0.8.2 + LightFix Test)");
 
