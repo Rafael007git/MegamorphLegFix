@@ -12,12 +12,12 @@ namespace MMorphFix
     [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.1.0")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
-        public static string DebugMonitorText = "Инициализация...";
+        public static string DebugMonitorText = "Initializing...";
         public static int TotalFramesCount = 0;
         public static int FixExecutionCalls = 0;
-        public static string LastFoundCharacter = "Никого";
-        public static string LeftLegTelemetry = "L: Ожидание суккуба...";
-        public static string RightLegTelemetry = "R: Ожидание суккуба...";
+        public static string LastFoundCharacter = "Nobody";
+        public static string LeftLegTelemetry = "L: Awaiting succubus...";
+        public static string RightLegTelemetry = "R: Awaiting succubus...";
         // ПЕРЕМЕННАЯ ДЛЯ ОТСЛЕЖИВАНИЯ СОСТОЯНИЯ ГИЗМО ВО FREEPOSE
         public static bool WasTransformingLastFrame = false;
 
@@ -153,10 +153,10 @@ namespace MMorphFix
 
             // Базовый статус ног
             string systemStatus =
-                $"[System] FPS: {TotalFramesCount} | Joint Inversions: {FixExecutionCalls}\n" +
+                $"[System] Frames: {TotalFramesCount} | Joint Inversions: {FixExecutionCalls}\n" +
                 $"[Protection Mode] {(IsFixEnabled ? "ACTIVE (Mesh protected)" : "DISABLED (Original MegaMorph)")}\n" +
-                $"[ПЕРСОНАЖ] Активный ID: {LastFoundCharacter}\n" +
-                $"[СТАТУС] {DebugMonitorText}\n" +
+                $"[Character] Active ID: {LastFoundCharacter}\n" +
+                $"[STATUS] {DebugMonitorText}\n" +
                 $"------------------------------------------------------------------------------------------------------\n" +
                 $"{LeftLegTelemetry}\n" +
                 $"------------------------------------------------------------------------------------------------------\n" +
