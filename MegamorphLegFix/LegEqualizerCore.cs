@@ -12,7 +12,8 @@ namespace MMorphFix
     public static class LegEqualizerCore
     {
         private static bool _isProcessing = false;
-        private static string _pelvisTelemetry = "[ТАЗ] pelvis: (1.00, 1.00, 1.00)";
+        // This is a startup placeholder. It will be immediately overwritten by real data once the character spawns.
+        private static string _pelvisTelemetry = "Pelvis scale: (1.00, 1.00, 1.00)";
 
         public static void ExecuteFix(CharacterCustomization cc) => ExecuteFix(cc, "АВТО_КОМПЕНСАЦИЯ");
 
@@ -35,7 +36,7 @@ namespace MMorphFix
                 string briefError = $"[Ошибка] {ex.GetType().Name} in {ex.TargetSite} -> {ex.Message}";
                 MMorphFixPlugin.DebugMonitorText = briefError;
                 if (MMorphFixPlugin.InstanceLogger != null)
-                    MMorphFixPlugin.InstanceLogger.LogError($"[LegFix Сбой]: {ex.GetType().Name} in {ex.TargetSite}.\n{ex}");
+                    MMorphFixPlugin.InstanceLogger.LogError($"[LegFix error]: {ex.GetType().Name} in {ex.TargetSite}.\n{ex}");
             }
             finally
             {
@@ -50,12 +51,12 @@ namespace MMorphFix
             Transform pelvis = FindBoneRecursive(cc.gameObject.transform, "pelvis");
             if (pelvis == null)
             {
-                if (isMainPlayer) MMorphFixPlugin.DebugMonitorText = "[ОШИБКА] Кость 'pelvis' не найдена!";
+                if (isMainPlayer) MMorphFixPlugin.DebugMonitorText = "[ERROR] Bone 'pelvis' not found!";
                 return;
             }
 
             if (isMainPlayer)
-                _pelvisTelemetry = $"[ТАЗ] pelvis scale: {MegamorphMathCore.SanitizeVector(pelvis.localScale).ToString("F2")}";
+                _pelvisTelemetry = $"[PELVIS] Pelvis scale: {MegamorphMathCore.SanitizeVector(pelvis.localScale).ToString("F2")}";
 
             // --- ШАГ 0: ЧИСТЫЕ ПОЛЗУНКИ ИЗ ПАМЯТИ МЕГАМОРФА (v0.8.6) ---
             // Больше никаких ручных перемножений. Берем голые дельты, под которые настроен меш.
@@ -89,7 +90,7 @@ namespace MMorphFix
                 MegamorphMathCore.ProtectJoint(lFoot, dLFoot, lShin);
 
                 if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
-                    UpdateLegTelemetry("ЛЕВАЯ", lThighBend, lShin, lFoot, dLShin, dLFoot);
+                    UpdateLegTelemetry("LEFT", lThighBend, lShin, lFoot, dLShin, dLFoot);
                 processOk = true;
             }
 
@@ -108,7 +109,7 @@ namespace MMorphFix
                 MegamorphMathCore.ProtectJoint(rFoot, dRFoot, rShin);
 
                 if (isMainPlayer && !source.StartsWith("FreePose", StringComparison.OrdinalIgnoreCase))
-                    UpdateLegTelemetry("ПРАВАЯ", rThighBend, rShin, rFoot, dRShin, dRFoot);
+                    UpdateLegTelemetry("RIGHT", rThighBend, rShin, rFoot, dRShin, dRFoot);
                 processOk = true;
             }
 
@@ -179,7 +180,7 @@ namespace MMorphFix
             if (isMainPlayer && processOk)
             {
                 MMorphFixPlugin.FixExecutionCalls++;
-                MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Щит активен [{source}]";
+                MMorphFixPlugin.DebugMonitorText = $"{_pelvisTelemetry} | Protection Active [{source}]";
             }
         }
 
@@ -189,8 +190,8 @@ namespace MMorphFix
             string telemetry =
                 $"[{side} LEG TELEMETRY]\n" +
                 $" -> Thigh scale: {MegamorphMathCore.SanitizeVector(thigh.localScale).ToString("F2")}\n" +
-                $" -> Shin scale: {shin.localScale.ToString("F2")} (Конфиг: {configShin.ToString("F2")})\n" +
-                $" -> Foot scale: {foot.localScale.ToString("F2")} (Конфиг: {configFoot.ToString("F2")})\n" +
+                $" -> Shin scale: {shin.localScale.ToString("F2")} (Config: {configShin.ToString("F2")})\n" +
+                $" -> Foot scale: {foot.localScale.ToString("F2")} (Config: {configFoot.ToString("F2")})\n" +
                 $" -> Knee joint rotation angle: {shin.localRotation.eulerAngles.ToString("F0")}°\n" +
                 $" -> Ankle joint rotation angle: {foot.localRotation.eulerAngles.ToString("F0")}°";
 
