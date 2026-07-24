@@ -1,9 +1,11 @@
-﻿using System;
-using System.Reflection;
+﻿extern alias MM;
 using BepInEx;
 using BepInEx.Logging;
 using HarmonyLib;
+using System;
+using System.Reflection;
 using UnityEngine;
+using static MM::MegaMorph.BepInExPlugin;
 
 namespace MMorphFix
 {
@@ -16,6 +18,8 @@ namespace MMorphFix
         public static string LastFoundCharacter = "Никого";
         public static string LeftLegTelemetry = "L: Ожидание суккуба...";
         public static string RightLegTelemetry = "R: Ожидание суккуба...";
+        // ПЕРЕМЕННАЯ ДЛЯ ОТСЛЕЖИВАНИЯ СОСТОЯНИЯ ГИЗМО ВО FREEPOSE
+        public static bool WasTransformingLastFrame = false;
 
         public static ManualLogSource InstanceLogger;
 
@@ -174,37 +178,72 @@ namespace MMorphFix
 
     }
 
+    // --- ОБЪЕДИНЕННЫЕ КЛАССЫ ПАТЧЕЙ (БЕЗ ДУБЛИКАТОВ ИМЕН) ---
+
     public static class MegamorphDoUpdatePatch
     {
         public static void Postfix(MonoBehaviour __instance)
         {
             if (__instance == null) return;
+
             CharacterCustomization cc = AccessTools.Field(__instance.GetType(), "cc")?.GetValue(__instance) as CharacterCustomization;
-            if (cc != null) LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ");
-        }
-    }
-
-    // Новый рабочий патч для FreePose-радара
-    public static class FreePoseGizmoUpdatePatch
-    {
-        public static void Postfix(MonoBehaviour __instance)
-        {
-            // Проверяем флаг работы гизмо из исходника (runTransformGizmo)
-            bool isRunning = (bool)AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance);
-
-            if (isRunning && Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            if (cc != null)
             {
-                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
-                if (cc != null) LegEqualizerCore.ExecuteFix(cc, "ГЛИФ_РАДАР");
+                // 1. Стабильный фикс деформации ног Мегаморфа
+                LegEqualizerCore.ExecuteFix(cc, "МЕГАМОРФ");
+
+                // 2. Реактивный фикс огоньков при смене слайдеров / пресетов
+                AnatomicalLightFix.ExecuteFix(cc.gameObject);
             }
         }
     }
 
-    // Фикс деформации сразу после применения ручной позы в FixedUpdate
+    public static class FreePoseGizmoUpdatePatch
+    {
+        public static void Postfix(MonoBehaviour __instance)
+        {
+            if (__instance == null) return;
+
+            // Проверяем флаг работы гизмо из исходника игры
+            bool isRunning = (bool)AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance);
+
+            // Считываем флаг трансформации (тянет ли игрок мышку прямо сейчас)
+            // Мы безопасно вытаскиваем свойство isTransforming через рефлексию
+            bool currentlyTransforming = false;
+            var prop = __instance.GetType().GetProperty("isTransforming", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance);
+            if (prop != null)
+            {
+                currentlyTransforming = (bool)prop.GetValue(__instance, null);
+            }
+
+            if (isRunning && Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null)
+                {
+                    // ТОЧКА А: Живой радар ног продолжает работать при движении мыши
+                    LegEqualizerCore.ExecuteFix(cc, "ГЛИФ_РАДАР");
+
+                    // ТОЧКА Б: Если в прошлом кадре крутили гизмо, а в этом ОТПУСТИЛИ мышку
+                    if (MMorphFixPlugin.WasTransformingLastFrame && !currentlyTransforming && cc.gameObject != null)
+                    {
+                        // Обновляем свет ровно 1 раз по окончании движения гизмо!
+                        AnatomicalLightFix.ExecuteFix(cc.gameObject);
+                    }
+                }
+            }
+
+            // Запоминаем состояние флага для следующего кадра
+            MMorphFixPlugin.WasTransformingLastFrame = currentlyTransforming;
+        }
+    }
+
     public static class FreePoseGizmoFixedUpdatePatch
     {
         public static void Postfix(MonoBehaviour __instance)
         {
+            if (__instance == null) return;
+
             bool isRunning = (bool)AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance);
 
             if (isRunning && Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
@@ -226,99 +265,56 @@ namespace MMorphFix
             bool isFreePoseActive = Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.isActiveAndEnabled;
             if (!isFreePoseActive)
             {
-                // Вместо мгновенного вызова запускаем корутину ожидания конца кадра,
-                // чтобы намертво перебить запеченные масштабы из анимации мебели (Furniture)
+                // Стабильный фоновый фикс ног в постели / на мебели
                 __instance.StartCoroutine(RunFixAtEndOfFrame(__instance));
             }
         }
 
         private static System.Collections.IEnumerator RunFixAtEndOfFrame(CharacterCustomization cc)
         {
-            // Ждем, пока отработают ВСЕ аниматоры, физика мебели и скиннинг Unity в этом кадре
             yield return new UnityEngine.WaitForEndOfFrame();
-
             if (cc != null)
             {
-                // Наносим финальный матричный удар по деформации голеней, 
-                // когда кости уже никто не сможет перезаписать в текущем кадре
                 LegEqualizerCore.ExecuteFix(cc, "КОНЕЦ_КАДРА_МЕБЕЛЬ");
             }
         }
     }
 
-
-    // ХУК: Перехватываем клик по любой встроенной позе из коллекции игры
     [HarmonyPatch(typeof(UIFreePose), "PoseButtonClicked")]
     public static class GamePoseChangeTriggerPatch
     {
         [HarmonyPostfix]
         public static void Postfix(global::Pose code, UIFreePose __instance)
         {
-            // Вытаскиваем текущего выбранного персонажа из интерфейса
             if (__instance != null && __instance.selectedCharacter != null)
             {
                 CharacterCustomization cc = __instance.selectedCharacter.GetComponent<CharacterCustomization>();
                 if (cc != null)
                 {
-                    // Принудительно встряхиваем и выпрямляем каскад ног в момент смены позы
                     LegEqualizerCore.ExecuteFix(cc, "КОЛЛЕКЦИЯ_ПОЗ");
-                }
-            }
-        }
-    }
-
-    // ХУК: Перехватываем применение сохраненных пользователем позо-файлов
-    [HarmonyPatch(typeof(LoadPoseIcon), "Click")] // Или альтернативный метод клика по кастомной позе
-    public static class CustomPoseLoadTriggerPatch
-    {
-        [HarmonyPostfix]
-        public static void Postfix()
-        {
-            // Если открыто меню свободных поз, находим персонажа и мгновенно лечим его скелет
-            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
-            {
-                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
-                if (cc != null)
-                {
-                    LegEqualizerCore.ExecuteFix(cc, "КАСТОМ_ПОЗА");
-                }
-            }
-        }
-    }
-
-    // ХУК 1: Ловит Мегаморф, пресеты внешности, одежду и смену поз
-    [HarmonyPatch(typeof(CharacterCustomization), "BuildCharacter")] // Укажите имя вашего основного метода ног
-    public static class МегаморфRefreshPatch
-    {
-        [HarmonyPostfix]
-        public static void Postfix(CharacterCustomization __instance)
-        {
-            if (__instance != null && __instance.gameObject != null)
-            {
-                AnatomicalLightFix.ExecuteFix(__instance.gameObject);
-            }
-        }
-    }
-
-    // ХУК 2: Ловит гизмо FreePose из PDF (срабатывает СТРОГО в момент, когда игрок отпустил мышку!)
-    [HarmonyPatch(typeof(RuntimeGizmos.TransformGizmo), "TransformSelected")]
-    public static class FreePoseGizmoPatch
-    {
-        [HarmonyPostfix]
-        public static void Postfix(RuntimeGizmos.TransformGizmo __instance)
-        {
-            // Берем главного персонажа, которого крутило гизмо прямо сейчас (из строки 81 вашего PDF)
-            if (__instance != null && __instance.mainTargetRoot != null)
-            {
-                // Находим корневой GameObject персонажа, к кости которого привязано гизмо
-                CharacterCustomization cc = __instance.mainTargetRoot.GetComponentInParent<CharacterCustomization>();
-                if (cc != null && cc.gameObject != null)
-                {
-                    // Обновляем свет ровно один раз по факту изменения позы гизмо!
+                    // Принудительно встряхиваем свет при выборе готовой позы из коллекции
                     AnatomicalLightFix.ExecuteFix(cc.gameObject);
                 }
             }
         }
     }
 
+    [HarmonyPatch(typeof(LoadPoseIcon), "Click")]
+    public static class CustomPoseLoadTriggerPatch
+    {
+        [HarmonyPostfix]
+        public static void Postfix()
+        {
+            if (Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
+            {
+                CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
+                if (cc != null)
+                {
+                    LegEqualizerCore.ExecuteFix(cc, "КАСТОМ_ПОЗА");
+                    // Принудительно встряхиваем свет при загрузке кастомного позо-файла
+                    AnatomicalLightFix.ExecuteFix(cc.gameObject);
+                }
+            }
+        }
+    }
 }

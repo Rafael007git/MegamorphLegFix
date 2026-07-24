@@ -6,7 +6,7 @@ namespace MMorphFix
 {
     public static class AnatomicalLightFix
     {
-        // ВОЗВРАЩАЕМ ПЕРЕМЕННЫЕ ДЛЯ РАДАРА: Теперь OnGUI() снова их увидит
+        // Переменные для вывода на отладочный UI-радар
         public static float Radar_HipScaleY = 1.0f;
         public static float Radar_HipLossyScaleY = 1.0f;
         public static float Radar_Light1_Intensity = 0.0f;
@@ -14,11 +14,13 @@ namespace MMorphFix
         public static float Radar_Light6_Intensity = 0.0f;
         public static string Radar_Status = "Ожидание изменений...";
 
+        // Статические поля для кэширования Reflection мода Let It Be Dark
         private static System.Reflection.FieldInfo _letItBeDarkField = null;
         private static bool _reflectionChecked = false;
 
         /// <summary>
-        /// Событийный фикс: вызывается при BuildCharacter или окончании работы гизмо.
+        /// Чистый событийный фикс: вызывается из хуков MegaMorph и Гизмо FreePose.
+        /// Нагрузка в простое — 0%.
         /// </summary>
         public static void ExecuteFix(GameObject characterRoot)
         {
@@ -40,7 +42,7 @@ namespace MMorphFix
             Transform lightGroup = FindBoneRecursive(hip, "character light group");
             if (lightGroup == null)
             {
-                Radar_Status = $" character light group не найдена в {hip.name}";
+                Radar_Status = $"character light group не найдена в {hip.name}";
                 return;
             }
 
@@ -51,12 +53,13 @@ namespace MMorphFix
             Radar_HipScaleY = hip.localScale.y;
             Radar_HipLossyScaleY = hip.lossyScale.y;
 
+            // Защита от NaN, бесконечности и критического деления
             float hipModifier = (float.IsNaN(Radar_HipLossyScaleY) || float.IsInfinity(Radar_HipLossyScaleY) || Mathf.Abs(Radar_HipLossyScaleY) < 0.01f) ? 1.0f : Radar_HipLossyScaleY;
 
-            // КВАДРАТИЧНЫЙ КОЭФФИЦИЕНТ: Физический закон обратных квадратов
+            // КВАДРАТИЧНЫЙ КОЭФФИЦИЕНТ: Реализация закона обратных квадратов
             float quadraticModifier = hipModifier * hipModifier;
 
-            // Мост к Let It Be Dark
+            // Мост к Let It Be Dark (поиск класса строго 1 раз за весь запуск игры)
             if (!_reflectionChecked)
             {
                 _reflectionChecked = true;
@@ -97,7 +100,7 @@ namespace MMorphFix
                     else
                         continue;
 
-                    // Квадратичное затухание
+                    // Бесконфликтная физическая интенсивность: [Ползунок F1] * [Let It Be Dark] * [Масштаб^2]
                     light.intensity = baseIntensity * letItBeDarkMultiplier * quadraticModifier;
 
                     // Записываем финальные значения яркости лампочек прямо на радар
