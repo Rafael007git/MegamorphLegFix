@@ -13,7 +13,9 @@ namespace MMorphFix
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Initializing...";
-        public static int TotalFramesCount = 0;
+        private float fps_Timer = 0f;
+        private int fps_Count = 0;
+        private int current_FPS = 0;
         public static int FixExecutionCalls = 0;
         public static string LastFoundCharacter = "Nobody";
         public static string LeftLegTelemetry = "L: Awaiting succubus...";
@@ -92,7 +94,16 @@ namespace MMorphFix
 
         private void Update()
         {
-            TotalFramesCount++;
+            // Классический счетчик FPS для Unity
+            fps_Timer += UnityEngine.Time.unscaledDeltaTime;
+            fps_Count++;
+
+            if (fps_Timer >= 1.0f) // Каждую секунду обновляем значение
+            {
+                current_FPS = fps_Count;
+                fps_Count = 0;
+                fps_Timer = 0f;
+            }
         }
 
         // Глобальный флаг для оперативного включения/выключения защиты
@@ -130,7 +141,7 @@ namespace MMorphFix
             {
                 string textToCopy =
                     $"=== [MegamorphLegFix TELEMETRY] ===\n" +
-                    $"Frames: {TotalFramesCount} | Joint Inversions: {FixExecutionCalls}\n" +
+                    $"FPS: {current_FPS} | Joint Inversions: {FixExecutionCalls}\n" +
                     $"Protection mode: {(IsFixEnabled ? "Active" : "Disabled")}\n" +
                     $"Character: {LastFoundCharacter}\n" +
                     $"Status: {DebugMonitorText}\n" +
@@ -153,7 +164,7 @@ namespace MMorphFix
 
             // Базовый статус ног
             string systemStatus =
-                $"[System] Frames: {TotalFramesCount} | Joint Inversions: {FixExecutionCalls}\n" +
+                $"[System] FPS: {current_FPS} | Joint Inversions: {FixExecutionCalls}\n" +
                 $"[Protection Mode] {(IsFixEnabled ? "ACTIVE (Mesh protected)" : "DISABLED (Original MegaMorph)")}\n" +
                 $"[Character] Active ID: {LastFoundCharacter}\n" +
                 $"[STATUS] {DebugMonitorText}\n" +
