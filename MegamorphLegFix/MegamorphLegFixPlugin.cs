@@ -9,7 +9,7 @@ using static MM::MegaMorph.BepInExPlugin;
 
 namespace MMorphFix
 {
-    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.1.0")]
+    [BepInPlugin("com.lorifel007.megamorphlegfix", "Megamorph Mod Fix", "1.1.1")]
     public class MMorphFixPlugin : BaseUnityPlugin
     {
         public static string DebugMonitorText = "Initializing...";
@@ -22,6 +22,12 @@ namespace MMorphFix
         public static string RightLegTelemetry = "R: Awaiting succubus...";
         // ПЕРЕМЕННАЯ ДЛЯ ОТСЛЕЖИВАНИЯ СОСТОЯНИЯ ГИЗМО ВО FREEPOSE
         public static bool WasTransformingLastFrame = false;
+        public static string SelectedGizmoHierarchy = "None";
+        private static Transform _lastGizmoTarget = null;
+        private static FieldInfo _gizmoTargetField;
+        private static bool _gizmoFieldSearched = false;
+        private static FieldInfo[] _gizmoFields;
+        private static bool _gizmoFieldsDumped = false;
 
         public static ManualLogSource InstanceLogger;
 
@@ -109,13 +115,90 @@ namespace MMorphFix
         // Глобальный флаг для оперативного включения/выключения защиты
         public static bool IsFixEnabled = true;
 
+        public static void UpdateGizmoHierarchyInfo(MonoBehaviour gizmoInstance)
+        {
+            if (gizmoInstance == null) return;
+
+            if (_gizmoFields == null)
+            {
+                var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+                _gizmoFields = gizmoInstance.GetType().GetFields(flags);
+            }
+
+            Transform target = null;
+
+            // 1. Сначала ищем по популярным именам полей в RuntimeGizmos
+            string[] candidateNames = { "target", "target_", "_target", "selectedTransform", "mainTargetRoot" };
+            foreach (var name in candidateNames)
+            {
+                var f = System.Array.Find(_gizmoFields, x => x.Name == name);
+                if (f != null)
+                {
+                    object val = f.GetValue(gizmoInstance);
+                    if (val is Transform t && t != null) { target = t; break; }
+                    if (val is GameObject go && go != null) { target = go.transform; break; }
+                }
+            }
+
+            // 2. Если по имени не нашли — проверяем списки/словари целей (в новых версиях RuntimeGizmos используется targetRootsOrdered)
+            if (target == null)
+            {
+                foreach (var f in _gizmoFields)
+                {
+                    if (f.Name.IndexOf("target", StringComparison.OrdinalIgnoreCase) >= 0)
+                    {
+                        object val = f.GetValue(gizmoInstance);
+                        if (val is Transform t && t != null) { target = t; break; }
+                        if (val is System.Collections.IList list && list.Count > 0)
+                        {
+                            if (list[0] is Transform lt && lt != null) { target = lt; break; }
+                            if (list[0] is GameObject lgo && lgo != null) { target = lgo.transform; break; }
+                        }
+                    }
+                }
+            }
+
+            // 3. Если всё равно null — один раз пишем все поля TransformGizmo в лог для точной диагностики
+            if (target == null)
+            {
+                if (!_gizmoFieldsDumped && InstanceLogger != null)
+                {
+                    _gizmoFieldsDumped = true;
+                    var names = new System.Collections.Generic.List<string>();
+                    foreach (var f in _gizmoFields) names.Add($"{f.FieldType.Name} {f.Name}");
+                    InstanceLogger.LogInfo("[LegFix] Поля TransformGizmo: " + string.Join(", ", names));
+                }
+                SelectedGizmoHierarchy = "No bone selected";
+                _lastGizmoTarget = null;
+                return;
+            }
+
+            if (target == _lastGizmoTarget) return;
+            _lastGizmoTarget = target;
+
+            var chain = new System.Collections.Generic.List<string>(4);
+            Transform current = target;
+            int depth = 0;
+
+            while (current != null && depth < 4)
+            {
+                chain.Add(current.name);
+                if (current.GetComponent<CharacterCustomization>() != null) break;
+                current = current.parent;
+                depth++;
+            }
+
+            chain.Reverse();
+            SelectedGizmoHierarchy = string.Join(" -> ", chain);
+        }
+
         private void OnGUI()
         {
             // Если радар выключен в меню F1 — ничего не рисуем!
             if (!ModConfigManager.ShowRadar) return;
 
             // Увеличиваем высоту окна до 450, чтобы влез диагностический блок света
-            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 450), "Leg and Light Fix REALTIME DIAGNOSTIC (v 1.1.0)");
+            UnityEngine.GUI.Box(new UnityEngine.Rect(10, 10, 650, 470), "Leg and Light Fix REALTIME DIAGNOSTIC (v 1.1.0)");
 
             UnityEngine.GUIStyle labelStyle = new UnityEngine.GUIStyle(UnityEngine.GUI.skin.label)
             {
@@ -167,6 +250,7 @@ namespace MMorphFix
                 $"[System] FPS: {current_FPS} | Joint Inversions: {FixExecutionCalls}\n" +
                 $"[Protection Mode] {(IsFixEnabled ? "ACTIVE (Mesh protected)" : "DISABLED (Original MegaMorph)")}\n" +
                 $"[Character] Active ID: {LastFoundCharacter}\n" +
+                $"[Active Gizmo] {SelectedGizmoHierarchy}\n" +
                 $"[STATUS] {DebugMonitorText}\n" +
                 $"------------------------------------------------------------------------------------------------------\n" +
                 $"{LeftLegTelemetry}\n" +
@@ -174,7 +258,7 @@ namespace MMorphFix
                 $"{RightLegTelemetry}";
 
             // Отрисовка статуса ног
-            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 70, 630, 240), systemStatus, labelStyle);
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 70, 630, 255), systemStatus, labelStyle);
 
             // СВЕЖИЙ БЛОК: Выводим данные по огонькам в самый низ радара (Rect Y = 320)
             string lightStatusText =
@@ -187,7 +271,7 @@ namespace MMorphFix
             UnityEngine.GUIStyle lightLabelStyle = new UnityEngine.GUIStyle(labelStyle);
             lightLabelStyle.normal.textColor = UnityEngine.Color.yellow;
 
-            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 320, 630, 120), lightStatusText, lightLabelStyle);
+            UnityEngine.GUI.Label(new UnityEngine.Rect(20, 335, 630, 120), lightStatusText, lightLabelStyle);
         }
 
     }
@@ -218,8 +302,10 @@ namespace MMorphFix
         {
             if (__instance == null) return;
 
-            // Проверяем флаг работы гизмо из исходника игры
-            bool isRunning = (bool)AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance);
+            // Обновляем путь кости в каждом кадре работы TransformGizmo
+            MMorphFixPlugin.UpdateGizmoHierarchyInfo(__instance);
+
+            bool isRunning = (bool)(AccessTools.Field(__instance.GetType(), "runTransformGizmo")?.GetValue(__instance) ?? false);
 
             // Считываем флаг трансформации (тянет ли игрок мышку прямо сейчас)
             // Мы безопасно вытаскиваем свойство isTransforming через рефлексию
@@ -232,6 +318,8 @@ namespace MMorphFix
 
             if (isRunning && Global.code != null && Global.code.uiFreePose != null && Global.code.uiFreePose.selectedCharacter)
             {
+                MMorphFixPlugin.UpdateGizmoHierarchyInfo(__instance); // <--- ОБНОВЛЯЕМ ПУТЬ КОСТИ
+
                 CharacterCustomization cc = Global.code.uiFreePose.selectedCharacter.GetComponent<CharacterCustomization>();
                 if (cc != null)
                 {
